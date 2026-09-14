@@ -1,4 +1,6 @@
----
+# Полные ответы
+
+## **ZERO-SHOT**
 
 Findings (ordered by severity)
 1. app/api.py:35-38 create_review – missing input validation and schema
@@ -41,10 +43,29 @@ Change summary (minimal, targeted)
 
 ---
 
+## **MASTER-PROMPT**
 
+summary: PR добавляет метод генерации ревью через внешний LLM и HTTP-эндпоинт POST /api/reviews, который принимает diff и возвращает ответ модели без доп. обработок.
+risks:
+1. file: app/review_service.py
+line: 12
+evidence: prompt формируется из сырого diff без редактирования секретов: 'prompt = f"Review this pull request and find problems:\n{diff}"'; правило: SEC-1
+risk: Утечка токенов/паролей/ключей во внешний LLM при передаче diff без редактирования.
+check: Подставить в diff тестовую строку 'token=TEST_SECRET'; замокать LLM так, чтобы он возвращал полученный prompt; вызвать review_service.review(diff); ожидание: в prompt должно быть REDACTED, фактически секрет останется в тексте.
+2. file: app/api.py
+line: 10
+evidence: длинный diff не ограничивается и не отклоняется: 'return review_service.review(payload"diff")'; правило: API-1
+risk: Нарушение протокола API для больших входов и риск перегруза сервиса: диффы >20 000 символов не отклоняются HTTP 413.
+check: Отправить POST /api/reviews с 'diff' длиной 20 001 символ; ожидание: HTTP 413; фактически вернётся 200/ответ модели и произойдёт вызов LLM.
+3. file: app/review_service.py
+line: 13
+evidence: внешний вызов без таймаута и обработки ошибок: 'answer = self.llm.generate(prompt)'; правило: REL-1
+risk: Подвисание запроса дольше 10 секунд или падение без контролируемого ответа при ошибке LLM.
+check: Замокать LLM.generate с задержкой 15 секунд либо выбрасывающий исключение; вызвать review_service.review(diff); ожидание: таймаут 10с и контролируемый ответ, фактически — зависание >10с или непроброшенная 500/traceback.
+checks:
+- Юнит‑тест редактирования секретов в prompt: diff с 'token=TEST_SECRET' не должен попадать в внешний вызов (SEC-1).
+- Интеграционный тест API на ограничение размера: diff = 20 001 символ, ожидание HTTP 413 (API-1).
+- Тесты надёжности LLM-вызова: симулированная задержка >10с и исключение → проверка таймаута 10с и контролируемого ответа (REL-1).
 
 ---
 
-
-
----
