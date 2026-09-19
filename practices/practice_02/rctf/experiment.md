@@ -42,8 +42,9 @@ Raw response: [`responses_raw.md`](../raw_files/responses_raw.md), `R.C.T.F.`.
 ## Изменённая версия ADR
 
 Раздел «Рассмотренные альтернативы» реально обновлён в
-[`adr_rctf.md`](../modified_artifacts/adr_rctf.md). В этой независимой версии
-ADR каждая строка явно разделяет AS IS от TO BE; Practice 1 не менялась.
+[`adr_rctf.md`](../modified_artifacts/adr_rctf.md). В рамках этого
+эксперимента Practice 1 не менялась; результат сохранён в независимой версии
+ADR, где каждая строка явно разделяет AS IS от TO BE.
 
 | Альтернатива | Корректная формулировка |
 |---|---|
@@ -54,4 +55,5 @@ ADR каждая строка явно разделяет AS IS от TO BE; Prac
 ## Ручная проверка
 
 AS IS сверено по `library.h` и `library_manager.h`; статус TO BE — по ADR и
-[`analysis.md`](../../practice_01/analysis.md). Practice 1 не менялась.
+[`analysis.md`](../../practice_01/analysis.md). В рамках эксперимента результат
+сохранён в независимой версии ADR, без изменения Practice 1.

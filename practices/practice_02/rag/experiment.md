@@ -50,7 +50,8 @@ Raw response: [`responses_raw.md`](../raw_files/responses_raw.md), `RAG`.
 В [`adr_rag.md`](../modified_artifacts/adr_rag.md) реально добавлен раздел
 «Трассировка решения». Он фиксирует существующие цепочки и gaps: не создаёт
 несуществующие тесты для duplicate playlist name или пустого `shared_ptr`.
-Practice 1 не менялась.
+В рамках этого эксперимента Practice 1 не менялась; результат сохранён в
+независимой версии ADR.
 
 ## Ручная проверка
 

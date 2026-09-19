@@ -41,8 +41,9 @@ Exact prompt: [`prompts_raw.md`](../raw_files/prompts_raw.md),
 [`library.h`](../../practice_01/example_music_library/library.h), а ADR уже
 выбирает владельца состояния владельцем инвариантов. В
 [`adr_tree_of_thoughts.md`](../modified_artifacts/adr_tree_of_thoughts.md)
-раздел альтернатив реально заменён сравнением по четырём критериям. Practice
-1 не менялась.
+раздел альтернатив реально заменён сравнением по четырём критериям. В рамках
+этого эксперимента Practice 1 не менялась; результат сохранён в независимой
+версии ADR.
 
 ## Ручная проверка
 
