@@ -62,7 +62,7 @@ Ollama / OpenCode / Python, версии:
 ## Эксперимент
 
 Фактор A/B:
-- A: baseline (без system), B: system (system.txt). Менялось только system prompt.
+- A: baseline (без явного system-сообщения в API-запросе), B: system (system.txt). В сохранённых запросах меняется только наличие system-сообщения; отсутствие SYSTEM в самой модели itmo-local этим не подтверждается: текущий Modelfile содержит SYSTEM.
 
 Неизменные условия:
 - model=itmo-local (qwen3.5:2b), temperature=0.2, seed=42, think=false, num_ctx=4096.
@@ -92,7 +92,7 @@ TTFT измерен или не измерен:
 ## Вывод
 
 Ошибка или обнаруженное ограничение:
-- baseline без system выдал выдуманный ответ про GitHub Actions на вопрос о CI.
+- baseline без явного system-сообщения в API-запросе выдал выдуманный ответ про GitHub Actions на вопрос о CI.
 - В CLI-запуске `ollama run` отображались «размышления», но в experiment.py использовалось `think=false`.
 
 Как проверили:
