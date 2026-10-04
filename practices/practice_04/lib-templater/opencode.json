@@ -4,6 +4,14 @@
       "context7": {
         "type": "remote",
         "url": "https://mcp.context7.com/mcp"
+      },
+      "template-inspector": {
+        "type": "local",
+        "command": [
+          "node",
+          ".opencode/mcp/template-inspector/server.mjs"
+        ],
+        "cwd": "."
       }
     }
   }
