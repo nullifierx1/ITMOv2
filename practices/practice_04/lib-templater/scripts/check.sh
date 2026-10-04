@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# Portable strict mode without pipefail for some shells
+set -eu
 
 # Run from lib-templater root
 cmake -S . -B build -G Ninja \
@@ -9,3 +10,6 @@ cmake -S . -B build -G Ninja \
 cmake --build build
 
 ctest --test-dir build --output-on-failure
+
+# Feature B: bootstrap layout test (use Python in WSL)
+/usr/bin/python3 tests/bootstrap_layout_test.py
