@@ -42,6 +42,8 @@ Feature B — generated public include layout.
 # Workflow
 
 - Перед изменением читать относящийся код и проверки.
+- Перед изменением кода прочитать docs/style-guide.md
+  и соблюдать его правила.
 - Для Feature A/B использовать test-first workflow.
 - Сначала показать failing check.
 - Затем минимальное исправление.
