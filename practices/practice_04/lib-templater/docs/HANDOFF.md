@@ -38,6 +38,18 @@ sh scripts/check.sh
 - check-after-edit plugin запускает verification
   после file-changing tools.
 
+### Local MCP dependencies
+
+After a fresh clone, restore the local MCP dependencies before using it:
+
+```text
+cd .opencode/mcp/template-inspector
+npm ci
+```
+
+Then return to the lib-templater root and run `opencode reload`.
+`node_modules` is local-only; `package-lock.json` is versioned.
+
 ## Constraints
 
 - BUILD_BIN=ON baseline issue remains OUT OF SCOPE.
