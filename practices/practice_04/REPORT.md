@@ -16,7 +16,7 @@ Project-local skill `test-driven-development` взят из `obra/superpowers`. 
 
 ### Context7 MCP
 
-Context7 задан в project-local `opencode.json`. Реальный tool `context7.query-docs` использовался при работе с документацией GoogleTest, CMake и OpenCode V2. Сервис был доступен не всегда: возникала временная DNS-ошибка `ENOTFOUND`, а позже OpenCode снова показал `context7 connected`.
+Context7 задан в project-local `opencode.json`. В сохранённой OpenCode-сессии `ses_ef8264c1dffeHQPR6wW9ztAkcm` по теме GoogleTest зафиксированы завершённые вызовы `context7.query-docs`. Запрос с `libraryId` `/websites/cmake_cmake_help` — `gtest_discover_tests CMake GoogleTest module documentation with example` — вернул страницы [FindGTest](https://cmake.org/cmake/help/latest/module/FindGTest.html) и [GoogleTest](https://cmake.org/cmake/help/latest/module/GoogleTest.html), подтвердив, что `gtest_discover_tests` обнаруживает тесты из executable и регистрирует их в CTest; в ответе был пример `include(GoogleTest)` и `gtest_discover_tests(example)`. Второй завершённый запрос с `libraryId` `/websites/google_github_io_googletest` — `Googletest Primer minimal TEST and EXPECT_TRUE example` — вернул [GoogleTest Quickstart](https://google.github.io/googletest/quickstart-cmake.html) с минимальным примером `TEST(...)` и подключением `<gtest/gtest.h>`. Реальный tool также использовался при работе с документацией OpenCode V2. Сервис был доступен не всегда: возникала временная DNS-ошибка `ENOTFOUND`, а позже OpenCode снова показал `context7 connected`.
 
 ### Style guide
 
