@@ -1,0 +1,15 @@
+BasedOnStyle: Google
+
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+ColumnLimit: 80
+
+DerivePointerAlignment: false
+PointerAlignment: Left
+SortIncludes: true
+IncludeBlocks: Regroup
+AllowShortFunctionsOnASingleLine: Empty
+SpacesInParentheses: false
+SpaceBeforeParens: ControlStatements
+BreakConstructorInitializersBeforeComma: true
