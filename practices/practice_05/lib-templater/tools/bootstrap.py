@@ -389,7 +389,7 @@ class Bootstrapper:
         content = path.read_text(encoding="utf-8")
         content = re.sub(
             r"target_link_libraries\(__PROJECT_NAME_TESTS__\s+PRIVATE\s+[A-Za-z_][A-Za-z0-9_]*::[A-Za-z_][A-Za-z0-9_]*",
-            f"target_link_libraries(__PROJECT_NAME_TESTS__\n    PRIVATE\n        __PROJECT_NAME__::__PROJECT_NAME__",
+            f"target_link_libraries(__PROJECT_NAME_TESTS__\n    PRIVATE\n        {self.options.project_name}::{self.options.project_name}",
             content,
             flags=re.MULTILINE,
         )
