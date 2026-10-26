@@ -1,0 +1,30 @@
+﻿{
+  "items": [
+    {
+      "id": "practice-05-bootstrap-gui-retrospective",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 33
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "byType": {
+      "change": {
+        "items": 1,
+        "passed": 1,
+        "failed": 0
+      }
+    }
+  },
+  "version": "1.0",
+  "root": {
+    "path": "C:\\Users\\1\\Documents\\ai-education\\ITMOv2",
+    "source": "nearest"
+  }
+}
