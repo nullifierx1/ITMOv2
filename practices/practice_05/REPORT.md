@@ -31,7 +31,7 @@ OpenSpec 1.14.1 использовался ретроспективно толь
 
 | Проверка | Результат |
 | --- | --- |
-| [Logic](lib-templater/tests/bootstrap_logic_test.py) / [CLI](lib-templater/tests/bootstrap_cli_test.py), отдельная среда без Qt | 15 / 15 PASS |
+| [Logic](lib-templater/tests/bootstrap_logic_test.py) / [CLI](lib-templater/tests/bootstrap_cli_test.py), отдельная среда без Qt | 16 / 15 PASS |
 | [GUI QtTest](lib-templater/tests/bootstrap_gui_test.py) | 13 PASS с desktop-плагином `windows`, ранее тот же набор прошёл с `offscreen` |
 | [Layout](lib-templater/tests/bootstrap_layout_test.py) | PASS |
 | Сгенерированный `demo_lib`, BUILD_TESTS=ON, BUILD_BIN=OFF, временная копия WSL | configure/build/CTest PASS, обнаружен и выполнен `Smoke.TrueIsTrue` |
