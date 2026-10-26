@@ -69,3 +69,11 @@ compile_commands.json
 
 # debug information files
 *.dwo
+
+# Python bootstrap checks and local environments
+__pycache__/
+*.pyc
+.venv/
+.venv-*/
+venv/
+*.egg-info/
