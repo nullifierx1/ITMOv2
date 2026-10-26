@@ -1,10 +1,10 @@
 # Quickstart: проверка Practice 5 после реализации
 
-Сейчас создан только план: новые модули и тесты ниже ещё не существуют. Команды описывают будущую приёмку, а не выполненные проверки. Контракт: `specs/contract.md`; Python binding: `specs/002-bootstrap-logic/contracts/bootstrap-api.md`; данные: `specs/002-bootstrap-logic/data-model.md`.
+Реализация и проверки завершены; результаты и границы доказательств записаны ниже. Контракт: [UI ↔ Logic](../contract.md); Python binding: [bootstrap-api.md](contracts/bootstrap-api.md); данные: [data-model.md](data-model.md). Инструкция копирования и запуска GUI — в [README](../../README.md#short-desktop-demonstration).
 
 ## Среда
 
-Python 3.12; для GUI — PySide6 из будущего `requirements-gui.txt`. Для Practice 4: Linux/WSL, sh, CMake >= 3.20, Ninja, C++ compiler и возможность получить GoogleTest при первом configure. Не менять текущий C++ standard или CI ради подготовки среды.
+Python 3.12; для GUI — PySide6 из [requirements-gui.txt](../../requirements-gui.txt). Для Practice 4: Linux/WSL, sh, CMake >= 3.20, Ninja, C++ compiler и возможность получить GoogleTest при первом configure. Не менять текущий C++ standard или CI ради подготовки среды.
 
 Все команды выполняются из корня lib-templater. Запись при проверках — только в отдельных копиях шаблона. Автотесты используют TemporaryDirectory и копируют нужные template-файлы по примеру bootstrap_layout_test; виртуальные окружения и build-output в fixture не включаются.
 
@@ -35,7 +35,7 @@ python -m venv .venv-logic
 
 Ошибки доступа воспроизводить управляемым fault injection в unittest.mock: права ОС недостаточно переносимы. Непустой Preview проверять и на копии с существующим bin/examples, чтобы deletion действительно присутствовал.
 
-Для каждой из четырёх комбинаций bin/examples сравнить итоговые деревья (относительные пути и типы) и байты файлов созданных проектов нового API и исходного CLI на идентичных копиях. Из сравнения исключить только точный относительный путь `tools/bootstrap.py`, поскольку версии самого скрипта различаются. Никакой нормализации путей или содержимого и никаких дополнительных исключений; все остальные пути, типы и байты должны совпадать. Исходный baseline — `tools/bootstrap.py` из текущего до реализации коммита `b768cd8`; получить его read-only через `git show b768cd8:practices/practice_05/lib-templater/tools/bootstrap.py` в родительском Git-репозитории. Перед фиксацией fixture проверить путь через `git ls-files --full-name tools/bootstrap.py`. Копию исходного скрипта размещать на месте tools/bootstrap.py только в baseline-fixture, чтобы root определялся прежним способом. Для обоих прогонов использовать одинаковые настройки, имя и состав fixture.
+Для четырёх комбинаций bin/examples [CLI-тест](../../tests/bootstrap_cli_test.py) сравнивает деревья и байты нового API, нового CLI и baseline `b768cd8` на одинаковых минимальных копиях. Исключён только файл самого скрипта `tools/bootstrap.py`; ожидаемое содержимое `tests/CMakeLists.txt` отличается ровно согласованной заменой `__PROJECT_NAME__::__PROJECT_NAME__` на `demo_lib::demo_lib`. Весь CMake-файл из сравнения не исключается. Служебные файлы проверяются отдельно: GUI/API их сохраняет, CLI продолжает прежние замены. Поэтому полное историческое равенство без оговорок не заявляется. Baseline читается через `git show b768cd8:practices/practice_05/lib-templater/tools/bootstrap.py`; путь проверяется через `git ls-files --full-name tools/bootstrap.py`. Checkout и рабочий шаблон не изменяются.
 
 CLI-набор проверяет прежние флаги, вопросы/defaults через subprocess stdin, приоритет явных значений над JSON, конфликты +/- флагов, str/bool coercion конфигурации, неизвестные ключи, отсутствие namespace и ошибочный пустой namespace JSON. Отдельно проверить отсутствующий/неверный JSON, не-объект, `--dry-run` без записи и без нового подтверждения; результаты доступны без разбора stdout для API.
 
@@ -92,6 +92,19 @@ sh scripts/check.sh
 
 Ожидается configure/build с BUILD_TESTS=ON и BUILD_BIN=OFF, минимум один обнаруженный smoke test и PASS bootstrap layout. Команда остаётся основной единой проверкой Practice 4; GUI/Logic-наборы Practice 5 запускаются отдельно. Обычный BUILD_BIN=ON исходного шаблона, C++20/C++23 и CI вне объёма.
 
-## Запись результатов при реализации
+## Фактические результаты — 2026-10-26
 
-Указать проверенный commit, Python/PySide6 версии, ОС и Qt platform, команды и pass/fail. До минимального исправления сохранить failing check; после — его успешный результат и необходимые регрессии. Текущий этап планирования не заявляет прохождение ещё не созданных тестов и не выполняет bootstrap над рабочим проектом.
+Проверенный HEAD до документационных правок: `6cf71268e7c42129cd610c289711989dd46ada5f`.
+Windows 11 (build 26200), Python 3.12.0; PySide6/Qt 6.10.1. В `.venv-logic` PySide6 отсутствует.
+
+| Команда / проверка | Результат |
+| --- | --- |
+| `.venv-logic/Scripts/python.exe -B -m unittest discover -s tests -p bootstrap_logic_test.py -v` | 16 PASS |
+| `.venv-logic/Scripts/python.exe -B -m unittest discover -s tests -p bootstrap_cli_test.py -v` | 15 PASS |
+| `.venv-logic/Scripts/python.exe -B tests/bootstrap_layout_test.py` | PASS |
+| `$env:QT_QPA_PLATFORM='windows'; ./.venv-gui/Scripts/python.exe -B -m unittest discover -s tests -p bootstrap_gui_test.py -v` | 13 PASS с desktop-плагином; ранее тот же набор прошёл с offscreen |
+| Сгенерированный API проект `demo_lib` во временной копии WSL: configure/build/CTest, BUILD_TESTS=ON, BUILD_BIN=OFF | PASS; обнаружен и выполнен `Smoke.TrueIsTrue` |
+
+Desktop-прогон QtTest открыл настоящие окна и диалоги на свежих копиях: defaults/root, Preview, отмена/закрытие, подтверждение/summary/header, ошибочный ввод и восстановление, worker и отложенное закрытие. Это автоматизированное desktop-прохождение. Из ручной проверки пользователя подтверждён Preview, выявивший затрагивание служебных файлов и повторные операции CMake. После исправлений регрессии проверяют сохранность служебных файлов и правильную цель; отдельная полная человеческая приёмка после исправлений не засвидетельствована.
+
+Для сгенерированного проекта выполнены `cmake -S . -B build -G 'Unix Makefiles' -DBUILD_TESTS=ON -DBUILD_BIN=OFF`, `cmake --build build`, `ctest --test-dir build -N`, `ctest --test-dir build --output-on-failure`. WSL: CMake 3.28.3, GCC 13.3.0. Исходный `sh scripts/check.sh` блокируется CRLF; Ninja в WSL отсутствует, поэтому применены эквивалентные команды с Makefiles. Скрипт не менялся. Рабочий репозиторий через bootstrap не преобразовывался.
