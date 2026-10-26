@@ -23,7 +23,7 @@
 
 ## Phase 2: Foundational — зафиксировать CLI до изменения общих этапов
 
-- [ ] T001 Зафиксировать в `tests/bootstrap_cli_test.py` прежнее поведение CLI: флаги, вопросы/defaults через subprocess stdin, stdout/stderr/exit codes, отсутствие подтверждения, JSON-приоритеты, str/bool coercion, неизвестные ключи, отсутствующий и пустой namespace, конфликт +/- флагов, ошибочный/отсутствующий/не-объект JSON, `--dry-run` без записи; прогнать на исходном bootstrap. Для будущего сравнения проверить Git-путь `tools/bootstrap.py` через `git ls-files --full-name` и доступность baseline из `b768cd8` по инструкции `specs/002-bootstrap-logic/quickstart.md`.
+- [X] T001 Зафиксировать в `tests/bootstrap_cli_test.py` прежнее поведение CLI: флаги, вопросы/defaults через subprocess stdin, stdout/stderr/exit codes, отсутствие подтверждения, JSON-приоритеты, str/bool coercion, неизвестные ключи, отсутствующий и пустой namespace, конфликт +/- флагов, ошибочный/отсутствующий/не-объект JSON, `--dry-run` без записи; прогнать на исходном bootstrap. Для будущего сравнения проверить Git-путь `tools/bootstrap.py` через `git ls-files --full-name` и доступность baseline из `b768cd8` по инструкции `specs/002-bootstrap-logic/quickstart.md`.
 
 **Checkpoint**: регрессия проходит на исходном CLI; baseline читается через Git без изменения checkout. Все проверки записи далее используют отдельные `TemporaryDirectory` с одинаковым составом шаблона, без build/venv/.git.
 
@@ -33,10 +33,10 @@
 
 **Независимая проверка**: без Qt вызвать Preview для `demo_lib`, повторить вызов и сравнить операции; snapshot путей, типов и байтов до/после совпадает как при успехе, так и при ошибке.
 
-- [ ] T002 [US1] Добавить в `tests/bootstrap_logic_test.py` проверки binding Preview: `demo_lib`, пустой namespace, шесть стилей, неверные поля/пробелы, отсутствующие обязательные файлы, повторяемость операций и отсутствие файловых изменений. Добавить минимальную проверку последовательности: в тестовой копии заменить `add_subdirectory(bin)` на `add_subdirectory(__PROJECT_NAME__)` в корневом CMakeLists.txt; для project_name=bin, keep_bin=true, keep_examples=false Preview должен отразить один update этого файла при замене имени, без дополнительного update на этапе bin, который уже видит `add_subdirectory(bin)` в подготовленном тексте; snapshot до/после Preview неизменен. Показать ожидаемое падение этих проверок из-за отсутствующего API до реализации; расширенное покрытие остаётся в T018.
-- [ ] T003 [US1] В `tools/bootstrap.py` добавить frozen dataclass Settings, Operation, Preview, ApplyResult и расширить BootstrapError по `specs/002-bootstrap-logic/data-model.md`: Settings содержит ровно пять полей; project_name — «Обязательно; `[A-Za-z][A-Za-z0-9_]*`; форма изначально пуста»; namespace — «Пустое из GUI → project_name; иначе `[A-Za-z_][A-Za-z0-9_]*(::[A-Za-z_][A-Za-z0-9_]*)*`»; codestyle — «chromium/google/llvm/microsoft/mozilla/webkit; google»; keep_bin — «true», keep_examples — «false». Вход без trim; Operation: kind «create/update/rename/delete», target_kind «file/directory», path «путь относительно root», new_path «обязателен для rename, отсутствует у остальных»; Preview: root «абсолютный корень текущего шаблона, видимый в GUI», settings «эффективные значения; namespace уже подставлен», operations «упорядоченная неизменяемая последовательность»; ApplyResult.summary — «непустой краткой сводкой успешного выполнения»; BootstrapError: stage «validation/preview/apply», message со str(error), необязательные field/path.
-- [ ] T004 [US1] Реализовать `preview(root, settings)` в `tools/bootstrap.py`: проверку значений и четырёх обязательных файлов из binding, затем существующие этапы через локальные таблицы будущего текста/существования путей в Bootstrapper. Сохранить порядок clang-format → EditorConfig → gitignore → замены → tests/CMakeLists → rename → bin → examples; учитывать новые текстовые файлы, создание родителей до файлов, оба пути rename, повторные update и удаление каталога с содержимым; никаких записей, включая временные копии, и универсального filesystem.
-- [ ] T005 [US1] В `tools/bootstrap.py` отделить печать сводки от общих этапов и передавать ошибки параметров как validation с field, структуры/чтения/декодирования как preview с message/path и перечнем отсутствующих файлов; API не вызывает input/print/sys.exit и не импортирует Qt. Добиться прохождения `tests/bootstrap_logic_test.py` и исходной CLI-регрессии из T001.
+- [X] T002 [US1] Добавить в `tests/bootstrap_logic_test.py` проверки binding Preview: `demo_lib`, пустой namespace, шесть стилей, неверные поля/пробелы, отсутствующие обязательные файлы, повторяемость операций и отсутствие файловых изменений. Добавить минимальную проверку последовательности: в тестовой копии заменить `add_subdirectory(bin)` на `add_subdirectory(__PROJECT_NAME__)` в корневом CMakeLists.txt; для project_name=bin, keep_bin=true, keep_examples=false Preview должен отразить один update этого файла при замене имени, без дополнительного update на этапе bin, который уже видит `add_subdirectory(bin)` в подготовленном тексте; snapshot до/после Preview неизменен. Показать ожидаемое падение этих проверок из-за отсутствующего API до реализации; расширенное покрытие остаётся в T018.
+- [X] T003 [US1] В `tools/bootstrap.py` добавить frozen dataclass Settings, Operation, Preview, ApplyResult и расширить BootstrapError по `specs/002-bootstrap-logic/data-model.md`: Settings содержит ровно пять полей; project_name — «Обязательно; `[A-Za-z][A-Za-z0-9_]*`; форма изначально пуста»; namespace — «Пустое из GUI → project_name; иначе `[A-Za-z_][A-Za-z0-9_]*(::[A-Za-z_][A-Za-z0-9_]*)*`»; codestyle — «chromium/google/llvm/microsoft/mozilla/webkit; google»; keep_bin — «true», keep_examples — «false». Вход без trim; Operation: kind «create/update/rename/delete», target_kind «file/directory», path «путь относительно root», new_path «обязателен для rename, отсутствует у остальных»; Preview: root «абсолютный корень текущего шаблона, видимый в GUI», settings «эффективные значения; namespace уже подставлен», operations «упорядоченная неизменяемая последовательность»; ApplyResult.summary — «непустой краткой сводкой успешного выполнения»; BootstrapError: stage «validation/preview/apply», message со str(error), необязательные field/path.
+- [X] T004 [US1] Реализовать `preview(root, settings)` в `tools/bootstrap.py`: проверку значений и четырёх обязательных файлов из binding, затем существующие этапы через локальные таблицы будущего текста/существования путей в Bootstrapper. Сохранить порядок clang-format → EditorConfig → gitignore → замены → tests/CMakeLists → rename → bin → examples; учитывать новые текстовые файлы, создание родителей до файлов, оба пути rename, повторные update и удаление каталога с содержимым; никаких записей, включая временные копии, и универсального filesystem.
+- [X] T005 [US1] В `tools/bootstrap.py` отделить печать сводки от общих этапов и передавать ошибки параметров как validation с field, структуры/чтения/декодирования как preview с message/path и перечнем отсутствующих файлов; API не вызывает input/print/sys.exit и не импортирует Qt. Добиться прохождения `tests/bootstrap_logic_test.py` и исходной CLI-регрессии из T001.
 
 ## Phase 4: US2 — Apply (P1)
 
@@ -44,8 +44,8 @@
 
 **Независимая проверка**: Preview → Apply на копии возвращает summary, создаёт `include/demo_lib/foo.h`, не оставляет `include/foo.h`; первый сбой прекращает дальнейшие действия.
 
-- [ ] T006 [US2] До реализации добавить в `tests/bootstrap_logic_test.py` падающие проверки `apply(preview)`: успешная сводка и header layout, отсутствие отдельных настроек в вызове, ошибка записи с stage/path и остановка следующих действий без ложного успеха.
-- [ ] T007 [US2] Реализовать `apply(preview)` в `tools/bootstrap.py` через существующие преобразования и эффективные root/settings, без исполнения operations универсальным движком; возвращать ApplyResult только при успехе, оборачивать первый сбой в BootstrapError(stage=apply, message, path), допуская частичные изменения без rollback/retry. Прогнать проверки T006.
+- [X] T006 [US2] До реализации добавить в `tests/bootstrap_logic_test.py` падающие проверки `apply(preview)`: успешная сводка и header layout, отсутствие отдельных настроек в вызове, ошибка записи с stage/path и остановка следующих действий без ложного успеха.
+- [X] T007 [US2] Реализовать `apply(preview)` в `tools/bootstrap.py` через существующие преобразования и эффективные root/settings, без исполнения operations универсальным движком; возвращать ApplyResult только при успехе, оборачивать первый сбой в BootstrapError(stage=apply, message, path), допуская частичные изменения без rollback/retry. Прогнать проверки T006.
 
 ## Phase 5: US3 — совместимость CLI (P2)
 
@@ -53,7 +53,7 @@
 
 **Независимая проверка**: T001 проходит после изменения bootstrap; прежний layout test успешен.
 
-- [ ] T008 [US3] Сохранить в `tools/bootstrap.py` parser, resolve_options, main, вопросы, приоритеты/преобразования JSON, все флаги и прежние внешние результаты; ошибки конфигурации предоставить как BootstrapError(stage=validation, path JSON и field при наличии) до записи. Не переносить GUI-подстановку namespace в CLI/JSON и не направлять legacy `--dry-run` через Preview. Прогнать `tests/bootstrap_cli_test.py` и `tests/bootstrap_layout_test.py`.
+- [X] T008 [US3] Сохранить в `tools/bootstrap.py` parser, resolve_options, main, вопросы, приоритеты/преобразования JSON, все флаги и прежние внешние результаты; ошибки конфигурации предоставить как BootstrapError(stage=validation, path JSON и field при наличии) до записи. Не переносить GUI-подстановку namespace в CLI/JSON и не направлять legacy `--dry-run` через Preview. Прогнать `tests/bootstrap_cli_test.py` и `tests/bootstrap_layout_test.py`.
 
 ## Phase 6: US4 — GUI: форма и Preview (P1)
 
@@ -61,10 +61,10 @@
 
 **Независимая проверка**: QApplication/QtTest открывает форму на копии, получает настоящий Preview для `demo_lib` без записи; root/defaults/операции соответствуют контракту.
 
-- [ ] T009 [US4] Создать `requirements-gui.txt` с единственной зависимостью PySide6, закрепив версию после проверки установки на Python 3.12; остальные Python-модули используют стандартную библиотеку.
-- [ ] T010 [US4] В `tests/bootstrap_gui_test.py` создать минимальные проверки настоящего QApplication/QtTest: начальные defaults/root, Apply недоступен, реальный Preview для `demo_lib` без записи и показ операций; показать падение до создания формы, не считать отсутствие PySide6 успешным прогоном.
-- [ ] T011 [US4] Создать в `tools/bootstrap_gui.py` запускаемую одной командой форму с русскими подписями: имя/namespace пусты, google, bin=true, examples=false, только шесть контрактных стилей, фиксированный root относительно приложения, EditorConfig «Соответствует выбранному стилю», подсказка namespace, две кнопки, прокручиваемые области операций/результата. Для тестов допустить root в конструкторе окна без нового CLI-флага.
-- [ ] T012 [US4] Подключить `preview(root, settings)` в `tools/bootstrap_gui.py` через небольшой QThread с работой в run() и результатом/ошибкой через сигналы; виджеты обновлять в GUI-потоке. Показывать «Подготовка», root/эффективные settings и все операции в исходном порядке с file/directory и обоими путями rename; блокировать поля/действия, хранить worker до finished, откладывать закрытие до finished. Любое изменение поля, даже с возвратом значения, сбрасывает Preview; пустой список показывает «Нет изменений» без Apply. Прогнать T010.
+- [X] T009 [US4] Создать `requirements-gui.txt` с единственной зависимостью PySide6, закрепив версию после проверки установки на Python 3.12; остальные Python-модули используют стандартную библиотеку.
+- [X] T010 [US4] В `tests/bootstrap_gui_test.py` создать минимальные проверки настоящего QApplication/QtTest: начальные defaults/root, Apply недоступен, реальный Preview для `demo_lib` без записи и показ операций; показать падение до создания формы, не считать отсутствие PySide6 успешным прогоном.
+- [X] T011 [US4] Создать в `tools/bootstrap_gui.py` запускаемую одной командой форму с русскими подписями: имя/namespace пусты, google, bin=true, examples=false, только шесть контрактных стилей, фиксированный root относительно приложения, EditorConfig «Соответствует выбранному стилю», подсказка namespace, две кнопки, прокручиваемые области операций/результата. Для тестов допустить root в конструкторе окна без нового CLI-флага.
+- [X] T012 [US4] Подключить `preview(root, settings)` в `tools/bootstrap_gui.py` через небольшой QThread с работой в run() и результатом/ошибкой через сигналы; виджеты обновлять в GUI-потоке. Показывать «Подготовка», root/эффективные settings и все операции в исходном порядке с file/directory и обоими путями rename; блокировать поля/действия, хранить worker до finished, откладывать закрытие до finished. Любое изменение поля, даже с возвратом значения, сбрасывает Preview; пустой список показывает «Нет изменений» без Apply. Прогнать T010.
 
 ## Phase 7: US5 — GUI: подтверждение и результат (P1)
 
@@ -72,9 +72,9 @@
 
 **Независимая проверка**: отмена/закрытие подтверждения дают ноль Apply и сохраняют Preview; принятие вызывает один Apply, затем показывает результат и требует новый Preview.
 
-- [ ] T013 [US5] В `tests/bootstrap_gui_test.py` добавить падающие проверки отмены/закрытия QMessageBox и подтверждения: сохранение ввода/Preview без записи при отказе, передача самого Preview единственному Apply при согласии, недоступность повторного запуска.
-- [ ] T014 [US5] В `tools/bootstrap_gui.py` добавить подтверждение с root и предупреждением о файловых изменениях, включая удаления; «Отмена» безопасна по умолчанию. При отказе/закрытии сохранить ввод и Preview, Apply разрешать только для актуального непустого Preview; после согласия немедленно потребить Preview и один раз передать его в worker без отдельных настроек.
-- [ ] T015 [US5] В `tools/bootstrap_gui.py` выполнить Apply тем же способом QThread: статус «Выполняется», заблокированные поля/действия и отложенное закрытие; после результата разблокировать форму, показать summary либо stage/message/field/path и предупреждение о возможных частичных изменениях с необходимостью проверить файлы. После любой попытки требуется новый Preview; прогнать T013.
+- [X] T013 [US5] В `tests/bootstrap_gui_test.py` добавить падающие проверки отмены/закрытия QMessageBox и подтверждения: сохранение ввода/Preview без записи при отказе, передача самого Preview единственному Apply при согласии, недоступность повторного запуска.
+- [X] T014 [US5] В `tools/bootstrap_gui.py` добавить подтверждение с root и предупреждением о файловых изменениях, включая удаления; «Отмена» безопасна по умолчанию. При отказе/закрытии сохранить ввод и Preview, Apply разрешать только для актуального непустого Preview; после согласия немедленно потребить Preview и один раз передать его в worker без отдельных настроек.
+- [X] T015 [US5] В `tools/bootstrap_gui.py` выполнить Apply тем же способом QThread: статус «Выполняется», заблокированные поля/действия и отложенное закрытие; после результата разблокировать форму, показать summary либо stage/message/field/path и предупреждение о возможных частичных изменениях с необходимостью проверить файлы. После любой попытки требуется новый Preview; прогнать T013.
 
 ## Phase 8: US6 — GUI: исправление ошибок (P2)
 
@@ -82,8 +82,8 @@
 
 **Независимая проверка**: пустое имя, `123-lib` и `demo::` показывают правило у поля и фокус; исправление позволяет получить новый Preview без старой ошибки.
 
-- [ ] T016 [US6] В `tests/bootstrap_gui_test.py` добавить падающие проверки сообщений/фокуса при неверных имени и namespace, сохранения остальных полей, пересмотра ошибки при новом Preview, Tab-порядка и отсутствия Apply по Enter в поле.
-- [ ] T017 [US6] В `tools/bootstrap_gui.py` отобразить возвращённые Logic field/message у поля и stage/path в результате без дублирования правил валидации; сохранить ввод, переводить фокус на первое ошибочное поле, очищать устаревшие ошибки при новой проверке. Настроить подписи, видимый фокус, Tab и безопасный Enter; прогнать T016.
+- [X] T016 [US6] В `tests/bootstrap_gui_test.py` добавить падающие проверки сообщений/фокуса при неверных имени и namespace, сохранения остальных полей, пересмотра ошибки при новом Preview, Tab-порядка и отсутствия Apply по Enter в поле.
+- [X] T017 [US6] В `tools/bootstrap_gui.py` отобразить возвращённые Logic field/message у поля и stage/path в результате без дублирования правил валидации; сохранить ввод, переводить фокус на первое ошибочное поле, очищать устаревшие ошибки при новой проверке. Настроить подписи, видимый фокус, Tab и безопасный Enter; прогнать T016.
 
 ## Phase 9: автоматические и сквозные проверки
 
@@ -91,31 +91,31 @@
 
 ### US1 — точность Preview
 
-- [ ] T018 [P] [US1] Расширить `tests/bootstrap_logic_test.py`: последовательные чтения ранее подготовленного текста, замены в созданных style/gitignore, создание родителей, rename, повторные update, существующие/отсутствующие bin/examples, детерминированность и отсутствие записи при ошибках чтения/декодирования через unittest.mock; проверять операции/эффекты, не внутреннее устройство таблиц.
+- [X] T018 [P] [US1] Расширить `tests/bootstrap_logic_test.py`: последовательные чтения ранее подготовленного текста, замены в созданных style/gitignore, создание родителей, rename, повторные update, существующие/отсутствующие bin/examples, детерминированность и отсутствие записи при ошибках чтения/декодирования через unittest.mock; проверять операции/эффекты, не внутреннее устройство таблиц.
 
 ### US2 — ошибки Apply
 
-- [ ] T019 [US2] Дополнить `tests/bootstrap_logic_test.py` управляемыми сбоями чтения/декодирования, записи, rename/delete во время Apply; проверить stage/message/path, прекращение следующих действий, отсутствие ApplyResult и допустимость частичных изменений.
+- [X] T019 [US2] Дополнить `tests/bootstrap_logic_test.py` управляемыми сбоями чтения/декодирования, записи, rename/delete во время Apply; проверить stage/message/path, прекращение следующих действий, отсутствие ApplyResult и допустимость частичных изменений.
 
 ### US3 — соответствие исходному CLI
 
-- [ ] T020 [P] [US3] В `tests/bootstrap_cli_test.py` сравнить итоговые деревья (относительные пути и типы) и байты файлов созданных проектов нового API и исходного CLI из `b768cd8` для всех четырёх комбинаций bin/examples на идентичных копиях по `specs/002-bootstrap-logic/quickstart.md`; исходный скрипт подставлять только в baseline-fixture на `tools/bootstrap.py`. Из сравнения исключить только точный относительный путь `tools/bootstrap.py`, поскольку версии самого скрипта различаются; никакой нормализации путей или содержимого и никаких дополнительных исключений. Повторить регрессию T001.
+- [X] T020 [P] [US3] В `tests/bootstrap_cli_test.py` сравнить итоговые деревья (относительные пути и типы) и байты файлов созданных проектов нового API и исходного CLI из `b768cd8` для всех четырёх комбинаций bin/examples на идентичных копиях по `specs/002-bootstrap-logic/quickstart.md`; исходный скрипт подставлять только в baseline-fixture на `tools/bootstrap.py`. Из сравнения исключить только точный относительный путь `tools/bootstrap.py`, поскольку версии самого скрипта различаются; никакой нормализации путей или содержимого и никаких дополнительных исключений. Повторить регрессию T001.
 
 ### US4 — состояния Preview и worker
 
-- [ ] T021 [P] [US4] В `tests/bootstrap_gui_test.py` проверить изменение поля с возвратом, пустой Preview, полноту/порядок операций, длинные пути/rename и прокрутку; через управляемую задержку Logic проверить обработку GUI-событий, блокировки и завершение отложенного закрытия после worker.finished. Ждать сигналы/состояния с timeout, без фиксированных sleep.
+- [X] T021 [P] [US4] В `tests/bootstrap_gui_test.py` проверить изменение поля с возвратом, пустой Preview, полноту/порядок операций, длинные пути/rename и прокрутку; через управляемую задержку Logic проверить обработку GUI-событий, блокировки и завершение отложенного закрытия после worker.finished. Ждать сигналы/состояния с timeout, без фиксированных sleep.
 
 ### US5 — сквозное применение и отказ
 
-- [ ] T022 [US5] В `tests/bootstrap_gui_test.py` выполнить на настоящей форме и Logic сквозной `demo_lib` → Preview → подтверждение → Apply → summary/header; snapshot до подтверждения неизменен. Для отмены/закрытия проверить ноль Apply и запись=0, сохранённый готовый Preview; для успеха — один Apply, потребление Preview и блокировку повторного запуска; для ошибки Apply — предупреждение о частичных изменениях без успеха. Spy допустим для счётчика, stub — только для управляемой ошибки.
+- [X] T022 [US5] В `tests/bootstrap_gui_test.py` выполнить на настоящей форме и Logic сквозной `demo_lib` → Preview → подтверждение → Apply → summary/header; snapshot до подтверждения неизменен. Для отмены/закрытия проверить ноль Apply и запись=0, сохранённый готовый Preview; для успеха — один Apply, потребление Preview и блокировку повторного запуска; для ошибки Apply — предупреждение о частичных изменениях без успеха. Spy допустим для счётчика, stub — только для управляемой ошибки.
 
 ### US6 — сквозная ошибка и восстановление
 
-- [ ] T023 [US6] В `tests/bootstrap_gui_test.py` проверить настоящую Logic с пустым/пробельным/неверным именем и `demo::`, неизменность файлов и сохранение ввода, затем исправление и успешный Preview; дополнить ошибкой структуры/чтения с причиной/path, повторной доступностью формы и клавиатурными сценариями из `specs/002-bootstrap-logic/quickstart.md`.
+- [X] T023 [US6] В `tests/bootstrap_gui_test.py` проверить настоящую Logic с пустым/пробельным/неверным именем и `demo::`, неизменность файлов и сохранение ввода, затем исправление и успешный Preview; дополнить ошибкой структуры/чтения с причиной/path, повторной доступностью формы и клавиатурными сценариями из `specs/002-bootstrap-logic/quickstart.md`.
 
 ### Общая регрессия
 
-- [ ] T024 Выполнить команды из `specs/002-bootstrap-logic/quickstart.md`: Logic/CLI/layout в отдельной среде без PySide6, настоящий GUI-набор в GUI-среде и `sh scripts/check.sh` в Linux/WSL; записать команды, pass/fail, commit, Python/PySide6, ОС и Qt platform в этот quickstart. Подтвердить configure/build при BUILD_TESTS=ON, BUILD_BIN=OFF, обнаружение smoke test и layout; `scripts/check.sh` не менять.
+- [X] T024 Выполнить команды из `specs/002-bootstrap-logic/quickstart.md`: Logic/CLI/layout в отдельной среде без PySide6, настоящий GUI-набор в GUI-среде и `sh scripts/check.sh` в Linux/WSL; записать команды, pass/fail, commit, Python/PySide6, ОС и Qt platform в этот quickstart. Подтвердить configure/build при BUILD_TESTS=ON, BUILD_BIN=OFF, обнаружение smoke test и layout; `scripts/check.sh` не менять.
 
 ## Phase 10: Polish — README и демонстрация
 
