@@ -278,6 +278,35 @@ int main() {
 
 
 @dataclass(frozen=True)
+class Settings:
+    project_name: str
+    namespace: str = ""
+    codestyle: str = "google"
+    keep_bin: bool = True
+    keep_examples: bool = False
+
+
+@dataclass(frozen=True)
+class Operation:
+    kind: str
+    target_kind: str
+    path: str
+    new_path: str | None = None
+
+
+@dataclass(frozen=True)
+class Preview:
+    root: Path
+    settings: Settings
+    operations: tuple[Operation, ...]
+
+
+@dataclass(frozen=True)
+class ApplyResult:
+    summary: str
+
+
+@dataclass(frozen=True)
 class Options:
     project_name: str
     namespace: str
@@ -289,7 +318,13 @@ class Options:
 
 
 class BootstrapError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, stage: str = "validation",
+                 field: str | None = None, path: str | None = None) -> None:
+        super().__init__(message)
+        self.stage = stage
+        self.message = message
+        self.field = field
+        self.path = path
 
 
 def detect_project_root() -> Path:
@@ -306,10 +341,18 @@ SKIP_FILES = {Path(__file__).name}
 
 
 class Bootstrapper:
-    def __init__(self, root: Path, options: Options) -> None:
+    def __init__(self, root: Path, options: Options, *, planning: bool = False,
+                 deterministic: bool = False, exclude_service_files: bool = False) -> None:
         self.root = root
         self.options = options
         self.actions: list[str] = []
+        self.planning = planning
+        self.deterministic = planning or deterministic
+        self.exclude_service_files = exclude_service_files
+        self.current_path: Path = root
+        self.operations: list[Operation] = []
+        self._planned_text: dict[Path, str] = {}
+        self._planned_kinds: dict[Path, str | None] = {}
 
     def run(self) -> None:
         self._validate_layout()
@@ -321,7 +364,6 @@ class Bootstrapper:
         self._rename_paths()
         self._configure_bin()
         self._configure_examples()
-        self._print_summary()
 
     def _validate_layout(self) -> None:
         required = [
@@ -330,10 +372,13 @@ class Bootstrapper:
             self.root / "tests" / "CMakeLists.txt",
             self.root / "cmake" / f"{TEMPLATE_PROJECT_NAME}Config.cmake.in",
         ]
-        missing = [str(path.relative_to(self.root)) for path in required if not path.exists()]
+        missing = [(path.relative_to(self.root).as_posix() if self.planning
+                    else str(path.relative_to(self.root))) for path in required
+                   if not (path.is_file() if self.planning else path.exists())]
         if missing:
             raise BootstrapError(
-                "Repository layout does not match the current template. Missing: " + ", ".join(missing)
+                "Repository layout does not match the current template. Missing: " + ", ".join(missing),
+                stage="preview" if self.planning else "validation", path=missing[0],
             )
 
     def _write_clang_format(self) -> None:
@@ -365,7 +410,7 @@ class Bootstrapper:
 
     def _update_gitignore(self) -> None:
         path = self.root / ".gitignore"
-        existing = path.read_text(encoding="utf-8") if path.exists() else ""
+        existing = self._read_text(path) if self._exists(path) else ""
         required_lines = [".vscode/", ".idea/"]
         missing = [line for line in required_lines if line not in existing.splitlines()]
         if not missing:
@@ -376,17 +421,17 @@ class Bootstrapper:
     def _replace_in_text_files(self) -> None:
         replacements = self._build_replacements()
         for path in self._iter_text_files():
-            original = path.read_text(encoding="utf-8")
+            original = self._read_text(path)
             updated = self._apply_replacements(original, replacements)
             if updated != original:
                 self._write_text(path, updated, f"replace placeholders in {path.relative_to(self.root)}")
 
     def _fix_tests_cmakelists(self) -> None:
         path = self.root / "tests" / "CMakeLists.txt"
-        if not path.exists():
+        if not self._exists(path):
             return
 
-        content = path.read_text(encoding="utf-8")
+        content = self._read_text(path)
         content = re.sub(
             r"target_link_libraries\(__PROJECT_NAME_TESTS__\s+PRIVATE\s+[A-Za-z_][A-Za-z0-9_]*::[A-Za-z_][A-Za-z0-9_]*",
             f"target_link_libraries(__PROJECT_NAME_TESTS__\n    PRIVATE\n        {self.options.project_name}::{self.options.project_name}",
@@ -429,7 +474,7 @@ class Bootstrapper:
             ),
         ]
         for old_path, new_path in rename_pairs:
-            if old_path.exists() and old_path != new_path:
+            if self._exists(old_path) and old_path != new_path:
                 self._rename_path(old_path, new_path)
 
     def _configure_bin(self) -> None:
@@ -478,10 +523,10 @@ class Bootstrapper:
 
     def _ensure_subdirectory_block(self, option_name: str, option_doc: str, subdir_name: str) -> None:
         root_cmake = self.root / "CMakeLists.txt"
-        if not root_cmake.exists():
+        if not self._exists(root_cmake):
             return
 
-        content = root_cmake.read_text(encoding="utf-8")
+        content = self._read_text(root_cmake)
         block = f'option({option_name} "{option_doc}" ON)\nif({option_name})\n    add_subdirectory({subdir_name})\nendif()\n'
 
         if f"add_subdirectory({subdir_name})" in content:
@@ -498,9 +543,9 @@ class Bootstrapper:
 
     def _remove_subdirectory_block(self, option_name: str, subdir_name: str) -> None:
         root_cmake = self.root / "CMakeLists.txt"
-        if not root_cmake.exists():
+        if not self._exists(root_cmake):
             return
-        content = root_cmake.read_text(encoding="utf-8")
+        content = self._read_text(root_cmake)
         updated = re.sub(
             rf'\n*if\({re.escape(option_name)}\)\n\s*add_subdirectory\({re.escape(subdir_name)}\)\nendif\(\)\n?',
             '\n',
@@ -511,15 +556,38 @@ class Bootstrapper:
             self._write_text(root_cmake, updated.rstrip() + "\n", f"remove {subdir_name} block from root CMakeLists.txt")
 
     def _iter_text_files(self) -> Iterable[Path]:
-        for path in self.root.rglob("*"):
-            if path.is_dir():
+        self.current_path = self.root
+        paths = self.root.rglob("*")
+        if self.planning:
+            paths = sorted(set(paths) | self._planned_text.keys())
+        elif self.deterministic:
+            paths = sorted(paths)
+        for path in paths:
+            if self._is_dir(path) or (self.planning and not self._exists(path)):
                 continue
             if path.name in SKIP_FILES:
                 continue
             if any(part in SKIP_DIRS for part in path.parts):
                 continue
+            if self.exclude_service_files and self._is_service_path(path):
+                continue
             if self._is_probably_text_file(path):
                 yield path
+
+    def _is_service_path(self, path: Path) -> bool:
+        relative = path.relative_to(self.root)
+        if relative.parts[0] in {"specs", ".specify", ".agents"}:
+            return True
+        if relative.parent == Path("tests") and relative.match("bootstrap_*_test.py"):
+            return True
+        for parent in relative.parents:
+            if parent == Path("."):
+                break
+            if parent.name in {".venv", "venv"} or parent.name.startswith(".venv-"):
+                return True
+            if (self.root / parent / "pyvenv.cfg").is_file():
+                return True
+        return False
 
     def _is_probably_text_file(self, path: Path) -> bool:
         if path.suffix.lower() in TEXT_FILE_EXTENSIONS:
@@ -527,29 +595,111 @@ class Bootstrapper:
         return path.name in {"CMakeLists.txt", ".clang-format", ".editorconfig", ".gitignore"}
 
     def _write_text(self, path: Path, content: str, action: str) -> None:
+        self.current_path = path
         self.actions.append(action)
+        if self.planning:
+            self._plan_parents(path)
+            kind = "update" if self._exists(path) else "create"
+            if self._is_dir(path):
+                raise BootstrapError("Cannot write text to a directory.", stage="preview",
+                                     path=path.relative_to(self.root).as_posix())
+            self.operations.append(Operation(kind, "file", path.relative_to(self.root).as_posix()))
+            self._planned_text[path] = content
+            self._planned_kinds[path] = "file"
+            return
         if self.options.dry_run:
             return
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
 
     def _rename_path(self, old_path: Path, new_path: Path) -> None:
+        self.current_path = old_path
         self.actions.append(f"rename {old_path.relative_to(self.root)} -> {new_path.relative_to(self.root)}")
+        if self.planning:
+            self._plan_parents(new_path)
+            target_kind = "directory" if self._is_dir(old_path) else "file"
+            self.operations.append(Operation("rename", target_kind,
+                                             old_path.relative_to(self.root).as_posix(),
+                                             new_path.relative_to(self.root).as_posix()))
+            paths = {old_path} | set(old_path.rglob("*")) | {
+                path for path in self._planned_kinds if path.is_relative_to(old_path)
+            }
+            for path in sorted(paths):
+                if not self._exists(path):
+                    continue
+                destination = new_path / path.relative_to(old_path)
+                self._planned_kinds[destination] = "directory" if self._is_dir(path) else "file"
+                if path in self._planned_text:
+                    self._planned_text[destination] = self._planned_text.pop(path)
+            for path in paths:
+                self._planned_kinds[path] = None
+            return
         if self.options.dry_run:
             return
         new_path.parent.mkdir(parents=True, exist_ok=True)
         old_path.rename(new_path)
 
     def _remove_path(self, path: Path) -> None:
-        if not path.exists():
+        self.current_path = path
+        if not self._exists(path):
             return
         self.actions.append(f"remove {path.relative_to(self.root)}")
+        if self.planning:
+            target_kind = "directory" if self._is_dir(path) else "file"
+            self.operations.append(Operation("delete", target_kind, path.relative_to(self.root).as_posix()))
+            self._planned_kinds[path] = None
+            for child in list(self._planned_text):
+                if child == path or child.is_relative_to(path):
+                    del self._planned_text[child]
+            for child in self._planned_kinds:
+                if child.is_relative_to(path):
+                    self._planned_kinds[child] = None
+            return
         if self.options.dry_run:
             return
         if path.is_dir():
             shutil.rmtree(path)
         else:
             path.unlink()
+
+    def _exists(self, path: Path) -> bool:
+        if self.planning:
+            if path in self._planned_kinds:
+                return self._planned_kinds[path] is not None
+            if any(parent in self._planned_kinds and self._planned_kinds[parent] is None
+                   for parent in path.parents):
+                return False
+        return path.exists()
+
+    def _is_dir(self, path: Path) -> bool:
+        if self.planning and path in self._planned_kinds:
+            return self._planned_kinds[path] == "directory"
+        return path.is_dir()
+
+    def _read_text(self, path: Path) -> str:
+        self.current_path = path
+        if self.planning and path in self._planned_text:
+            return self._planned_text[path]
+        try:
+            return path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            if not self.planning:
+                raise
+            raise BootstrapError(str(exc), stage="preview",
+                                 path=path.relative_to(self.root).as_posix()) from exc
+
+    def _plan_parents(self, path: Path) -> None:
+        missing = []
+        parent = path.parent
+        while not self._exists(parent):
+            missing.append(parent)
+            parent = parent.parent
+        if not self._is_dir(parent):
+            raise BootstrapError("Parent path is not a directory.", stage="preview",
+                                 path=parent.relative_to(self.root).as_posix())
+        for parent in reversed(missing):
+            self.operations.append(Operation("create", "directory", parent.relative_to(self.root).as_posix()))
+            self._planned_kinds[parent] = "directory"
 
     def _print_summary(self) -> None:
         print("Bootstrap completed." if not self.options.dry_run else "Dry run completed.")
@@ -580,6 +730,49 @@ def validate_namespace(value: str) -> str:
     if not re.fullmatch(pattern, value):
         raise argparse.ArgumentTypeError("Namespace must be a valid C++ namespace, for example mylib or my::lib.")
     return value
+
+
+def preview(root: Path, settings: Settings) -> Preview:
+    """Describe sequential bootstrap actions without writing to the template."""
+    for field, validator in (("project_name", validate_project_name), ("namespace", validate_namespace)):
+        value = getattr(settings, field)
+        if field == "namespace" and value == "":
+            value = settings.project_name
+        try:
+            validator(value)
+        except (argparse.ArgumentTypeError, TypeError) as exc:
+            raise BootstrapError(str(exc), field=field) from exc
+    if settings.codestyle not in CLANG_FORMAT_PRESETS:
+        raise BootstrapError("Codestyle must be one of: " + ", ".join(sorted(CLANG_FORMAT_PRESETS)),
+                             field="codestyle")
+    effective = Settings(settings.project_name, settings.namespace or settings.project_name,
+                         settings.codestyle, settings.keep_bin, settings.keep_examples)
+    root = Path(root)
+    try:
+        root = root.resolve()
+        options = Options(effective.project_name, effective.namespace, effective.codestyle,
+                          "match-codestyle", effective.keep_bin, effective.keep_examples, False)
+        bootstrapper = Bootstrapper(root, options, planning=True, exclude_service_files=True)
+        bootstrapper.run()
+    except (OSError, UnicodeError) as exc:
+        raise BootstrapError(str(exc), stage="preview", path=str(getattr(exc, "filename", None) or root)) from exc
+    return Preview(root, effective, tuple(bootstrapper.operations))
+
+
+def apply(preview: Preview) -> ApplyResult:
+    """Apply the settings of a Preview; stop at the first filesystem failure."""
+    settings = preview.settings
+    options = Options(settings.project_name, settings.namespace, settings.codestyle,
+                      "match-codestyle", settings.keep_bin, settings.keep_examples, False)
+    bootstrapper = Bootstrapper(preview.root, options, deterministic=True, exclude_service_files=True)
+    try:
+        bootstrapper.run()
+    except BootstrapError as exc:
+        raise BootstrapError(exc.message, stage="apply", field=exc.field, path=exc.path) from exc
+    except (OSError, UnicodeError) as exc:
+        path = getattr(exc, "filename", None) or bootstrapper.current_path
+        raise BootstrapError(str(exc), stage="apply", path=str(path)) from exc
+    return ApplyResult(f"Проект {settings.project_name} настроен. Действий: {len(bootstrapper.actions)}.")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -632,11 +825,13 @@ def load_json_config(path: Path | None) -> dict[str, object]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
-        raise BootstrapError(f"Config file not found: {path}") from exc
+        raise BootstrapError(f"Config file not found: {path}", path=str(path)) from exc
     except json.JSONDecodeError as exc:
-        raise BootstrapError(f"Config file is not valid JSON: {path}") from exc
+        raise BootstrapError(f"Config file is not valid JSON: {path}", path=str(path)) from exc
+    except (OSError, UnicodeError) as exc:
+        raise BootstrapError(str(exc), path=str(path)) from exc
     if not isinstance(data, dict):
-        raise BootstrapError("Config file root must be a JSON object.")
+        raise BootstrapError("Config file root must be a JSON object.", path=str(path))
     return data
 
 
@@ -644,26 +839,36 @@ def resolve_options(args: argparse.Namespace) -> Options:
     config = load_json_config(args.config)
 
     project_name = args.project_name or config.get("project_name")
-    if not project_name:
-        project_name = validate_project_name(input("Project name: ").strip())
-    else:
-        project_name = validate_project_name(str(project_name))
+    try:
+        if not project_name:
+            project_name = validate_project_name(input("Project name: ").strip())
+        else:
+            project_name = validate_project_name(str(project_name))
+    except argparse.ArgumentTypeError as exc:
+        raise BootstrapError(str(exc), field="project_name",
+                             path=str(args.config) if args.config else None) from exc
 
     namespace = args.namespace or config.get("namespace")
-    if namespace is None:
-        namespace = validate_namespace(input(f"Namespace [{project_name}]: ").strip() or project_name)
-    else:
-        namespace = validate_namespace(str(namespace))
+    try:
+        if namespace is None:
+            namespace = validate_namespace(input(f"Namespace [{project_name}]: ").strip() or project_name)
+        else:
+            namespace = validate_namespace(str(namespace))
+    except argparse.ArgumentTypeError as exc:
+        raise BootstrapError(str(exc), field="namespace",
+                             path=str(args.config) if args.config else None) from exc
 
     codestyle = args.codestyle or config.get("codestyle")
     if codestyle is None:
         codestyle = prompt_choice("Choose codestyle:", sorted(CLANG_FORMAT_PRESETS.keys()), "google")
     if codestyle not in CLANG_FORMAT_PRESETS:
-        raise BootstrapError(f"Unsupported codestyle: {codestyle}")
+        raise BootstrapError(f"Unsupported codestyle: {codestyle}", field="codestyle",
+                             path=str(args.config) if args.config else None)
 
     editorconfig = args.editorconfig or config.get("editorconfig") or "match-codestyle"
     if editorconfig != "match-codestyle":
-        raise BootstrapError("Unsupported EditorConfig mode. Use match-codestyle.")
+        raise BootstrapError("Unsupported EditorConfig mode. Use match-codestyle.", field="editorconfig",
+                             path=str(args.config) if args.config else None)
 
     if args.keep_bin and args.no_bin:
         raise BootstrapError("Use either --keep-bin or --no-bin, not both.")
@@ -707,6 +912,7 @@ def main() -> int:
         options = resolve_options(args)
         bootstrapper = Bootstrapper(ROOT, options)
         bootstrapper.run()
+        bootstrapper._print_summary()
     except BootstrapError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
