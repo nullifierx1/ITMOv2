@@ -1,0 +1,444 @@
+{
+  "scope": {
+    "stage": "post_fix",
+    "materials_received": [
+      "THREAT_MODEL.md (выдержки)",
+      "REPORT_01.md (полный текст)",
+      "REPORT_02.md (полный текст)",
+      "lab/service.py (фрагменты: 40–62, 74–198, 205–244)",
+      "lab/test_security_regressions.py (фрагменты: 30–203)"
+    ],
+    "missing_materials": [
+      "Исходная уязвимая версия service.py",
+      "sandbox.py (любой версии)",
+      "README/критерии (отдельным файлом)",
+      "planner-system.txt (полный текст)",
+      "opencode.json (полный текст)",
+      "Сырые артефакты/логи экспериментов LLM из REPORT_02",
+      "Исходные тесты преподавателя (lab/test_service.py, lab/test_http.py) целиком"
+    ],
+    "limitations": [
+      "Инструменты и запуск тестов запрещены; проверка только по переданным фрагментам и текстам",
+      "Ссылки в документах не раскрывают содержимое; внешний код по ссылкам не читался",
+      "Сырые ответы моделей и манифесты LLM-экспериментa не приложены; динамические утверждения о LLM не подтверждаемы",
+      "sandbox.py не предоставлен: поведение песочницы проверяется только по утверждениям в отчётах и использованию в service.py"
+    ]
+  },
+  "verdict": "acceptable_for_stage",
+  "summary": "Оценка только в пределах постфикс-ревью по приложенным материалам. Архитектура, угрозы S01–S11 и H01 в целом согласованы между моделью угроз и отчётами; исправления коррелируют с текущим кодом и регрессионными тестами. Обнаружены и подтверждены остаточные риски и пробелы проверки (S07/S10/S11, политика staff/delete_tree, контекст LLM), часть динамических заявлений (LLM refuse, принудительные проверки executor за пределами тестов) не верифицируема из-за отсутствия артефактов.",
+  "coverage": [
+    {
+      "area": "Архитектура: HTTP API, сессии/роли, SQLite, отзывы/HTML, журнал, Sandbox, planner/executor",
+      "status": "covered",
+      "evidence_refs": [
+        "THREAT_MODEL.md L15-L58",
+        "lab/service.py L74-L198",
+        "lab/service.py L205-L244"
+      ],
+      "comment": "Компоненты и потоки соответствуют: маршруты, сессии и роли, БД SQLite, HTML-ответ для отзывов, логи, операции Sandbox, контекст/execute. Автовызова LLM в service.py нет, как заявлено."
+    },
+    {
+      "area": "Активы и роли",
+      "status": "partial",
+      "evidence_refs": [
+        "THREAT_MODEL.md L62-L73",
+        "lab/service.py L44-L50",
+        "lab/service.py L74-L91",
+        "lab/service.py L105-L124"
+      ],
+      "comment": "Определены профили/заказы/чеки/журнал/контекст. Серверные проверки видны в коде. Код логина и детальная инициализация аккаунтов/сессий в фрагментах отсутствуют."
+    },
+    {
+      "area": "Границы G1–G10",
+      "status": "partial",
+      "evidence_refs": [
+        "THREAT_MODEL.md L74-L89",
+        "lab/service.py L58-L62",
+        "lab/service.py L125-L142",
+        "lab/service.py L143-L163",
+        "lab/service.py L164-L198",
+        "lab/service.py L110-L120"
+      ],
+      "comment": "Большинство границ подтверждаются кодом. G7/G8: реализация Sandbox не предоставлена. G10 (артефакты→судья) — по модели угроз, без внешних артефактов."
+    },
+    {
+      "area": "SQL запросы и авторизация",
+      "status": "covered",
+      "evidence_refs": [
+        "lab/service.py L74-L91",
+        "lab/service.py L80-L86",
+        "lab/service.py L143-L154",
+        "lab/test_security_regressions.py L44-L51",
+        "lab/test_security_regressions.py L53-L61",
+        "REPORT_02.md L11-L15"
+      ],
+      "comment": "Параметризация SELECT, привязка данных к сессии, негативные регрессии подтверждены тестами."
+    },
+    {
+      "area": "Файлы и песочница",
+      "status": "partial",
+      "evidence_refs": [
+        "lab/service.py L110-L120",
+        "lab/service.py L188-L196",
+        "lab/test_security_regressions.py L85-L89",
+        "REPORT_02.md L16-L21"
+      ],
+      "comment": "Доступ к чеку теперь по сессии; delete_tree разрешён для staff без явных ограничений пути в коде. Реализация Sandbox не проверена."
+    },
+    {
+      "area": "Журнал и доступ к логам",
+      "status": "covered",
+      "evidence_refs": [
+        "lab/service.py L51-L56",
+        "lab/service.py L120-L124",
+        "lab/test_security_regressions.py L92-L99",
+        "lab/test_security_regressions.py L181-L190",
+        "REPORT_02.md L17-L21"
+      ],
+      "comment": "Минимальный журнал (method/target), доступ только staff, лимит 100. Целевой URL логируется целиком, без атрибуции к пользователю."
+    },
+    {
+      "area": "Отзывы и HTML",
+      "status": "covered",
+      "evidence_refs": [
+        "lab/service.py L125-L142",
+        "lab/test_security_regressions.py L102-L107",
+        "lab/test_security_regressions.py L193-L203",
+        "REPORT_02.md L18-L21"
+      ],
+      "comment": "Сессия и валидация на запись, ограничение размера и количества, экранирование HTML подтверждены."
+    },
+    {
+      "area": "Assistant: контекст и executor",
+      "status": "covered",
+      "evidence_refs": [
+        "lab/service.py L143-L163",
+        "lab/service.py L164-L198",
+        "lab/test_security_regressions.py L53-L61",
+        "lab/test_security_regressions.py L132-L156",
+        "lab/test_security_regressions.py L159-L178",
+        "REPORT_02.md L19-L21"
+      ],
+      "comment": "Контекст требует владельца заказа; executor авторизует инструменты, аргументы-объект проверяется. Полная схема решения и привязка к конкретному заказу не проверены."
+    },
+    {
+      "area": "Динамические доказательства LLM",
+      "status": "missing",
+      "evidence_refs": [
+        "REPORT_02.md L25-L48"
+      ],
+      "comment": "Файлы с ответами/манифестами не приложены; проверка заявленных результатов LLM невозможна."
+    }
+  ],
+  "findings": [
+    {
+      "id": "J01",
+      "related_report_ids": [
+        "S07"
+      ],
+      "title": "Журнал хранит полный target с query и не маскирует возможные секреты; доступ к логам staff-only",
+      "priority": "P2",
+      "status": "confirmed_static",
+      "component": "HTTP logging и /debug/logs",
+      "trust_boundary": "G9: запрос → журнал → читатель",
+      "root_cause": "Логирование сохраняет метод и полный target без фильтрации параметров; нет маскировки потенциально чувствительных значений query",
+      "preconditions": [
+        "Клиент выполняет запрос с чувствительными параметрами в URL",
+        "Пользователь с ролью staff читает /debug/logs"
+      ],
+      "impact": "Ограниченное раскрытие информации через логи; возможна утечка текста вопросов или случайно включённых секретов в query. Публичной утечки вне staff не подтверждено",
+      "evidence_refs": [
+        "lab/service.py L51-L56",
+        "lab/service.py L58-L62",
+        "lab/service.py L120-L124",
+        "lab/test_security_regressions.py L92-L99",
+        "lab/test_security_regressions.py L181-L190",
+        "REPORT_02.md L17-L21"
+      ],
+      "evidence_gaps": [],
+      "recommendation": "Маскировать/исключать query из логов либо фильтровать чувствительные ключи; логировать также идентификатор сессии/пользователя отдельно от клиентских заголовков; оставить staff-only доступ",
+      "verification_needed": "Добавить регрессию, подтверждающую отсутствие чувствительных параметров в target, и проверку на наличие атрибуции события к серверной сессии"
+    },
+    {
+      "id": "J02",
+      "related_report_ids": [
+        "S10"
+      ],
+      "title": "Некорректная структура валидного JSON может приводить к 500 вместо контролируемого 4xx",
+      "priority": "P2",
+      "status": "confirmed_static",
+      "component": "HTTP обработчик и маршруты /orders, /assistant/execute и др.",
+      "trust_boundary": "G1: HTTP → сервер",
+      "root_cause": "Общий перехват исключений в HTTP-слое возвращает 500 без деталей; отдельные маршруты (например, POST /orders) обращаются к полям из body без проверки наличия",
+      "preconditions": [
+        "Клиент отправляет валидный JSON с отсутствующими обязательными полями"
+      ],
+      "impact": "Неверная классификация ошибок клиента как 500; возможны утечки деталей при иных ветках и ухудшение UX/диагностики",
+      "evidence_refs": [
+        "lab/service.py L92-L101",
+        "lab/service.py L205-L229",
+        "REPORT_02.md L20-L21"
+      ],
+      "evidence_gaps": [
+        "Нет динамического кейса, фиксирующего конкретную 500 при валидном JSON с пропущенным ключом"
+      ],
+      "recommendation": "Ввести явную валидацию схемы для каждого маршрута (обязательные поля/типы) и возвращать 400/403/404 вместо 500; добавить регрессионные тесты на структурно валидный, но семантически неверный JSON",
+      "verification_needed": "Тесты: POST /orders без product; POST /assistant/execute с отсутствующим tool/arguments → 400 с контролируемым сообщением"
+    },
+    {
+      "id": "J03",
+      "related_report_ids": [
+        "H01",
+        "S03",
+        "S09"
+      ],
+      "title": "Контекст LLM включает все отзывы и вопрос из query; риск смешения данных и инструкций (prompt injection) остаётся",
+      "priority": "P2",
+      "status": "confirmed_static",
+      "component": "/assistant/context",
+      "trust_boundary": "G5: данные → инструкции LLM",
+      "root_cause": "В prompt включаются все накопленные отзывы и произвольный параметр question; отсутствие сепарации данных от инструкций на уровне формата и политики",
+      "preconditions": [
+        "Пользователь добавляет вредоносный отзыв или вопрос",
+        "Контекст передаётся во внешний planner вручную рабочим агентом (вне сервиса)"
+      ],
+      "impact": "Модель может предложить нежелательные действия. На сервере executor ограничивает доступ, поэтому прямое чтение чужих чеков/удаление клиентом блокируются, но поведение модели остаётся неопределённым",
+      "evidence_refs": [
+        "lab/service.py L143-L163",
+        "THREAT_MODEL.md L81-L89",
+        "REPORT_01.md L108-L116",
+        "REPORT_02.md L13-L21"
+      ],
+      "evidence_gaps": [
+        "Нет приложенных сырых ответов и идентичных пар запусков для подтверждения/опровержения влияния отзыва на реальную модель"
+      ],
+      "recommendation": "Минимизировать контекст (только отзывы по продукту заказа), отделять данные от инструкций (например, структурированный формат с явными полями), по возможности нормализовать/очищать question; сохранить строгую серверную авторизацию executor",
+      "verification_needed": "Парный LLM-эксперимент с неизменёнными настройками модели до/после вредоносного отзыва; фиксация точных входов/ответов и результата executor"
+    },
+    {
+      "id": "J04",
+      "related_report_ids": [
+        "S09"
+      ],
+      "title": "Инструмент delete_tree доступен роли staff без ограничений по ресурсу; возможна полная очистка песочницы",
+      "priority": "P1",
+      "status": "confirmed_static",
+      "component": "/assistant/execute (delete_tree)",
+      "trust_boundary": "G6: решение → инструмент; G8: корень Sandbox → владельцы",
+      "root_cause": "Отсутствует политика ограничения удаляемого пути на стороне сервиса для staff; аргумент path валидируется только как строка и передаётся в sandbox.delete_tree",
+      "preconditions": [
+        "Наличие staff-сессии",
+        "Передача решения с tool=delete_tree и произвольным path"
+      ],
+      "impact": "Удаление произвольного дерева внутри песочницы, включая корневой контент; влияет на целостность учебных файлов и чеков",
+      "evidence_refs": [
+        "lab/service.py L188-L196",
+        "REPORT_02.md L19-L21"
+      ],
+      "evidence_gaps": [
+        "sandbox.py не предоставлен; предполагается, что удаление ограничено физическим корнем, но бизнес-ограничений нет"
+      ],
+      "recommendation": "Ограничить delete_tree до безопасного поднабора (например, временные артефакты) или отключить в пользовательском контуре; добавить allowlist путей/шаблонов и регрессионные тесты для staff",
+      "verification_needed": "Негативные тесты: попытка staff удалить корень и неподдерживаемые пути → 403; позитивные тесты для разрешённых целей (если предусмотрены)"
+    },
+    {
+      "id": "J05",
+      "related_report_ids": [
+        "S11"
+      ],
+      "title": "Отсутствует подтверждение срока жизни сессий и их ограничений",
+      "priority": "P2",
+      "status": "not_assessed",
+      "component": "sessions",
+      "trust_boundary": "G1/G9",
+      "root_cause": "Во фрагментах кода не видно механизма истечения срока и ограничений по числу сессий",
+      "preconditions": [],
+      "impact": "Потенциальный рост числа сессий и риски, связанные с длительными сессиями",
+      "evidence_refs": [
+        "lab/service.py L44-L50",
+        "REPORT_02.md L21"
+      ],
+      "evidence_gaps": [
+        "Не предоставлен код маршрута /login и инициализации сессий; нельзя подтвердить отсутствие TTL/ротации"
+      ],
+      "recommendation": "Ввести TTL/ротацию сессий, ограничение количества активных и их очистку; добавить регрессионные тесты",
+      "verification_needed": "Проверки истечения сессии по времени/количеству и реакции API"
+    },
+    {
+      "id": "J06",
+      "related_report_ids": [
+        "S11",
+        "S07"
+      ],
+      "title": "Отсутствует серверная атрибуция событий в журнале",
+      "priority": "P2",
+      "status": "confirmed_static",
+      "component": "Журнал",
+      "trust_boundary": "G9: запрос → журнал → читатель",
+      "root_cause": "Логи содержат только метод и target; идентификатор сессии/пользователя не сохраняется",
+      "preconditions": [
+        "Доступ к /debug/logs (staff)"
+      ],
+      "impact": "Сложность атрибуции действий к серверно установленному субъекту; риск отказа от авторства",
+      "evidence_refs": [
+        "lab/service.py L51-L56",
+        "lab/service.py L120-L124",
+        "REPORT_02.md L17-L21"
+      ],
+      "evidence_gaps": [],
+      "recommendation": "Добавить в запись журнала идентификатор сессии/пользователя, установленный сервером; избегать использования недоверенных заголовков",
+      "verification_needed": "Тест: записи журнала содержат server-side subject (id/role) при доступе staff"
+    }
+  ],
+  "fix_review": {
+    "status": "provided",
+    "items": [
+      {
+        "finding_id": "J01",
+        "status": "partial",
+        "diff_refs": [
+          "lab/service.py L51-L56",
+          "lab/service.py L120-L124"
+        ],
+        "validation_refs": [
+          "lab/test_security_regressions.py L92-L99",
+          "lab/test_security_regressions.py L181-L190",
+          "REPORT_02.md L17-L21"
+        ],
+        "comment": "Секреты из body/headers убраны, доступ к логам staff-only, лимит 100. Query остаётся в target и может содержать чувствительные данные; атрибуции нет"
+      },
+      {
+        "finding_id": "J02",
+        "status": "partial",
+        "diff_refs": [
+          "lab/service.py L205-L229"
+        ],
+        "validation_refs": [
+          "lab/test_security_regressions.py L110-L130",
+          "REPORT_02.md L20-L21"
+        ],
+        "comment": "Некорректный JSON даёт 400, аргументы не-объект тоже 400. Для валидного JSON с отсутствующими ключами остаются потенциальные 500"
+      },
+      {
+        "finding_id": "J03",
+        "status": "unaddressed",
+        "diff_refs": [
+          "lab/service.py L143-L163"
+        ],
+        "validation_refs": [
+          "REPORT_02.md L25-L44"
+        ],
+        "comment": "Контекст по-прежнему включает все отзывы и вопрос. Эксперимент LLM заявлен, но артефакты не приложены; серверная авторизация executor снижает последствия"
+      },
+      {
+        "finding_id": "J04",
+        "status": "unaddressed",
+        "diff_refs": [
+          "lab/service.py L188-L196"
+        ],
+        "validation_refs": [
+          "lab/test_security_regressions.py L159-L178",
+          "REPORT_02.md L19-L21"
+        ],
+        "comment": "Staff по-прежнему может вызвать delete_tree с произвольным путём. Политика для staff не уточнена тестами"
+      },
+      {
+        "finding_id": "J05",
+        "status": "not_assessed",
+        "diff_refs": [],
+        "validation_refs": [
+          "REPORT_02.md L21"
+        ],
+        "comment": "TTL/ротация сессий не подтверждены ни кодом, ни тестами в переданных фрагментах"
+      },
+      {
+        "finding_id": "J06",
+        "status": "unaddressed",
+        "diff_refs": [
+          "lab/service.py L51-L56"
+        ],
+        "validation_refs": [
+          "REPORT_02.md L17-L21"
+        ],
+        "comment": "Атрибуции событий пользователю в журналах нет; это признано как остаточный пробел"
+      }
+    ]
+  },
+  "residual_risks": [
+    "Логи сохраняют полный target, включая query; нет атрибуции событий пользователю",
+    "Валидный JSON с неправильной структурой может приводить к 500 (частично исправлено S10)",
+    "delete_tree доступен staff без ограничений по пути; риск удаления всего содержимого песочницы",
+    "Контекст LLM включает все отзывы и произвольный вопрос; риск prompt injection остаётся гипотезой и требует парных экспериментов",
+    "Срок жизни и лимиты сессий не подтверждены"
+  ],
+  "next_actions": [
+    {
+      "priority": "P1",
+      "action": "Ограничить delete_tree для staff (allowlist/запрет опасных путей) и добавить регрессионные тесты",
+      "acceptance_condition": "Запрос delete_tree('.') от staff → 403; удаление разрешено только для явно разрешённых путей"
+    },
+    {
+      "priority": "P1",
+      "action": "Ввести валидацию схемы входных JSON для всех маршрутов (обязательные поля/типы) и корректные коды 4xx",
+      "acceptance_condition": "POST /orders без product → 400 с контролируемым сообщением; отсутствующие поля в /assistant/execute → 400"
+    },
+    {
+      "priority": "P2",
+      "action": "Санитизировать/маскировать query в логах и добавить серверную атрибуцию события (id/role) в запись журнала",
+      "acceptance_condition": "GET /debug/logs не содержит чувствительных параметров, запись содержит server-side subject"
+    },
+    {
+      "priority": "P2",
+      "action": "Сузить контекст LLM (отзывы по продукту заказа), отделить данные от инструкций",
+      "acceptance_condition": "В prompt присутствуют только релевантные данные; вредоносный отзыв по другому товару не попадает в контекст"
+    },
+    {
+      "priority": "P2",
+      "action": "Определить политику staff для инструментов executor и задокументировать допустимые операции",
+      "acceptance_condition": "Документ и тесты отражают и обеспечивают ограничения для staff в соответствии с политикой"
+    },
+    {
+      "priority": "P2",
+      "action": "Добавить TTL/ротацию сессий и ограничения по количеству",
+      "acceptance_condition": "Сессии истекают по времени/количеству; соответствующие тесты подтверждают поведение"
+    }
+  ],
+  "rubric": [
+    {
+      "criterion": "Модель угроз (README критерий)",
+      "max_points": 2,
+      "assessment": "met",
+      "reason": "THREAT_MODEL.md охватывает компоненты, активы, границы, STRIDE и меры; согласованность с кодом подтверждена"
+    },
+    {
+      "criterion": "Промпт судьи (README критерий)",
+      "max_points": 1,
+      "assessment": "not_assessed",
+      "reason": "Файл judge-system-prompt.md не предоставлен в материалах"
+    },
+    {
+      "criterion": "REPORT_01 (README критерий)",
+      "max_points": 2,
+      "assessment": "met",
+      "reason": "Статический отчёт S01–S11 и H01 с точными ссылками и пределами; соответствует текущей модели угроз"
+    },
+    {
+      "criterion": "Исправления и тесты (README критерий)",
+      "max_points": 2,
+      "assessment": "met",
+      "reason": "Исправления отражены в текущем service.py; регрессионные тесты покрывают ключевые случаи и упомянутые частичные исправления"
+    },
+    {
+      "criterion": "REPORT_02 (README критерий)",
+      "max_points": 2,
+      "assessment": "met",
+      "reason": "Для S01–S11 указаны меры, проверки и ограничения; признаны остаточные риски и границы LLM-проверки"
+    },
+    {
+      "criterion": "PR и выводы (README критерий)",
+      "max_points": 1,
+      "assessment": "not_assessed",
+      "reason": "Информация о PR не предоставлена; по REPORT_02 PR не открыт целенаправленно"
+    }
+  ]
+}

@@ -1,0 +1,167 @@
+{
+  "status": "completed",
+  "agent": "threat-judge",
+  "model": "vsellm/openai/gpt-5",
+  "session_id": "ses_e82df3901ffeUBJiFUn73cHs7Q",
+  "materials": [
+    {
+      "file": "THREAT_MODEL.md",
+      "line_ranges": [
+        [
+          1,
+          114
+        ]
+      ],
+      "source_sha256": "35eb0aef9d2d39632a4e905ae345f95ba9c496dbc41480fb7f42d477bebbdd5f",
+      "selected_text_sha256": "35eb0aef9d2d39632a4e905ae345f95ba9c496dbc41480fb7f42d477bebbdd5f"
+    },
+    {
+      "file": "REPORT_01.md",
+      "line_ranges": [
+        [
+          1,
+          168
+        ]
+      ],
+      "source_sha256": "fc8292c09b33b072a4046e8472e06634e302c70cd6f4d4313202a00bcf8d1294",
+      "selected_text_sha256": "fc8292c09b33b072a4046e8472e06634e302c70cd6f4d4313202a00bcf8d1294"
+    },
+    {
+      "file": "REPORT_02.md",
+      "line_ranges": [
+        [
+          1,
+          75
+        ]
+      ],
+      "source_sha256": "959e378d68d315fe17bcc18cc2ac7cad1e6a1ba33da8d528f01179023cb4b51f",
+      "selected_text_sha256": "959e378d68d315fe17bcc18cc2ac7cad1e6a1ba33da8d528f01179023cb4b51f"
+    },
+    {
+      "file": "lab/service.py",
+      "line_ranges": [
+        [
+          40,
+          62
+        ],
+        [
+          74,
+          198
+        ],
+        [
+          205,
+          244
+        ]
+      ],
+      "source_sha256": "362eb7bf0b22172106c5798393261dae3b2695a6e3fc9d266c93f8663b49e163",
+      "selected_text_sha256": "1d0fdaaa0e30919f46b2c0878c8e72646c9b2728d248932127978dc8944188a8"
+    },
+    {
+      "file": "lab/test_security_regressions.py",
+      "line_ranges": [
+        [
+          30,
+          35
+        ],
+        [
+          37,
+          42
+        ],
+        [
+          44,
+          51
+        ],
+        [
+          53,
+          61
+        ],
+        [
+          64,
+          68
+        ],
+        [
+          71,
+          75
+        ],
+        [
+          78,
+          82
+        ],
+        [
+          85,
+          89
+        ],
+        [
+          92,
+          99
+        ],
+        [
+          102,
+          107
+        ],
+        [
+          110,
+          130
+        ],
+        [
+          132,
+          156
+        ],
+        [
+          159,
+          178
+        ],
+        [
+          181,
+          190
+        ],
+        [
+          193,
+          203
+        ]
+      ],
+      "source_sha256": "4390a0e5c609f6f6d15797821ead645f80b8b72d99256b59403ab4b72f78882a",
+      "selected_text_sha256": "e40c734a08cea7757925734b29b96118aae2950dcbc76949e600d6138c11134b"
+    }
+  ],
+  "system_file": "judge-system-prompt.md",
+  "system_sha256": "46b79b50324a38684d1d4599151d22d6a039f9f2dd872021739a0a147596c538",
+  "input_sha256": "9471b0de03e44acaa2527353b5448bc86288aca5f3753f1b0b275987bd4a6fe1",
+  "payload_secret_scan": "PASS",
+  "model_requests_started": 1,
+  "command": [
+    "opencode",
+    "run",
+    "--standalone",
+    "--session",
+    "ses_e82df3901ffeUBJiFUn73cHs7Q",
+    "--agent",
+    "threat-judge",
+    "--model",
+    "vsellm/openai/gpt-5",
+    "--format",
+    "json",
+    "--title",
+    "Practice 06 authorized threat judge review",
+    "--file",
+    "evidence/gpt55/judge/authorized-review/input.txt",
+    "--",
+    "Проверь переданную модель угроз и оба отчёта только по приложенным материалам. Верни один JSON по схеме системного промпта. Укажи существенные замечания и пределы проверки. Не изменяй файлы и не вызывай инструменты."
+  ],
+  "started_utc": "2026-10-27T11:37:17.673536+00:00",
+  "extra_global_instructions": false,
+  "isolated_config": true,
+  "exit_code": 0,
+  "finished_utc": "2026-10-27T11:39:09.171828+00:00",
+  "json_valid": true,
+  "verdict": "acceptable_for_stage",
+  "user_message_envelope": {
+    "prefix": "\"Проверь переданную модель угроз и оба отчёта только по приложенным материалам. Верни один JSON по схеме системного промпта. Укажи существенные замечания и пределы проверки. Не изменяй файлы и не вызывай инструменты.\" \"Проверь переданную модель угроз и оба отчёта только по приложенным материалам. Верни один JSON по схеме системного промпта. Укажи существенные замечания и пределы проверки. Не изменяй файлы и не вызывай инструменты.\"\n\n<file name=\"input.txt\">\n",
+    "suffix": "\n</file>",
+    "reconstruction": "prefix + UTF-8 input.txt contents + suffix",
+    "sha256": "fce5221a18abdb94359f28fa83301096f4a3a2bd9e8640671498a30ab09724fa"
+  },
+  "source_revision": "252531f7708de96f8fce54bc5152302cb3022231",
+  "working_directory": "practices/practice_06",
+  "command_path_note": "Machine-specific executable and input paths normalized; all other recorded arguments preserved."
+}
