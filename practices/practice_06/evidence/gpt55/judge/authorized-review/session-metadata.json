@@ -1,0 +1,25 @@
+{
+  "session_id": "ses_e82df3901ffeUBJiFUn73cHs7Q",
+  "assistant": {
+    "id": "msg_17d26841d0016vDSd4VvBl5KDf",
+    "agent": "threat-judge",
+    "model": {
+      "id": "openai/gpt-5",
+      "providerID": "vsellm",
+      "variant": "default"
+    },
+    "finish": "stop",
+    "tokens": {
+      "input": 20147,
+      "output": 5454,
+      "reasoning": 4864,
+      "cache": {
+        "read": 0,
+        "write": 0
+      }
+    }
+  },
+  "user_messages": 1,
+  "assistant_messages": 1,
+  "input_present_verbatim": true
+}
