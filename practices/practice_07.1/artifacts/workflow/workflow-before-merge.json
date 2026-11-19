@@ -1,0 +1,627 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "owner": {
+          "__rl": true,
+          "value": "nullifierx1",
+          "mode": "list",
+          "cachedResultName": "nullifierx1",
+          "cachedResultUrl": "https://github.com/nullifierx1"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "n8n-code-review-test",
+          "mode": "list",
+          "cachedResultName": "n8n-code-review-test",
+          "cachedResultUrl": "https://github.com/nullifierx1/n8n-code-review-test"
+        },
+        "events": [
+          "issue_comment"
+        ],
+        "options": {}
+      },
+      "id": "581ae5de-8cec-4a12-93ee-f43f2c08445c",
+      "name": "PR Trigger1",
+      "type": "n8n-nodes-base.githubTrigger",
+      "position": [
+        0,
+        160
+      ],
+      "typeVersion": 1,
+      "webhookId": "c6a30e53-bda5-4922-87f3-8cdfb399a35f",
+      "credentials": {
+        "githubApi": {
+          "id": "GsfGcSmr0b1futs9",
+          "name": "GitHub account 68"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = /** @type {any} */ ($input.first().json.body);\n\nif (!body || body.action !== 'created' || !body.issue?.pull_request) {\n  return [];\n}\n\nconst command = String(body.comment?.body ?? '').trim();\n\nif (\n  command !== '/make_ai_review' &&\n  command !== '/make_other_ai_review'\n) {\n  return [];\n}\n\nconst repository = body.repository?.full_name;\nconst prNumber = Number(body.issue.number);\n\nif (\n  repository !== 'nullifierx1/n8n-code-review-test' ||\n  !Number.isInteger(prNumber) ||\n  prNumber <= 0\n) {\n  return [];\n}\n\nreturn [\n  {\n    json: {\n      command,\n      repository,\n      pr_number: prNumber,\n      review_key: `${repository}#${prNumber}`,\n      model: command === '/make_ai_review'\n        ? 'openai/gpt-5'\n        : 'deepseek-flash',\n    },\n  },\n];"
+      },
+      "id": "074dc00c-32c2-4dc8-8795-0a612012f5a2",
+      "name": "Parse PR Comment",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        240,
+        160
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "LjO8YgyJYIZjH6Vb",
+          "mode": "list",
+          "cachedResultName": "reviewed_prs",
+          "cachedResultUrl": "/projects/6NeKLg2x1W0oWnNT/datatables/LjO8YgyJYIZjH6Vb"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "review_key",
+              "keyValue": "={{ $json.review_key }}"
+            }
+          ]
+        }
+      },
+      "id": "fcc30ed2-4d6f-45cb-9e3b-ada831ffc81f",
+      "name": "Skip Already Reviewed",
+      "type": "n8n-nodes-base.dataTable",
+      "position": [
+        480,
+        160
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "url": "=https://api.github.com/repos/{{ $(\"Parse PR Comment\").first().json.repository }}/pulls/{{ $(\"Parse PR Comment\").first().json.pr_number }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3.diff"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "59d1756f-2dd9-4216-a7b9-29ed51353544",
+      "name": "Get PR Diff",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        672,
+        160
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "5mdYnoI1xfUV0ufI",
+          "name": "Bearer Auth account 38"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "0c802291-19e2-4491-90f4-1eac1c8fe18d",
+              "leftValue": "={{ $(\"Parse PR Comment\").first().json.command }}",
+              "rightValue": "/make_ai_review",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ce651c0f-0c87-4851-88cd-7a1fdcf3e337",
+      "name": "Is Main Model?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        960,
+        160
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ты опытный Python-разработчик. Проведи code review изменений в Pull Request.\n\nАнализируй только добавленные и изменённые строки diff. Не комментируй неизменённый код без необходимости.\n\nИщи реальные ошибки, регрессии, уязвимости и проблемы производительности.\nДля каждой настоящей проблемы укажи файл, изменённую строку, причину и конкретное исправление.\nНе выдумывай замечаний. Если существенных проблем нет, так и скажи.\n\nDiff:\n{{ $json.data }}",
+        "options": {
+          "systemMessage": ""
+        }
+      },
+      "id": "4ac964d6-cce5-4d22-84e9-655e8c6e77e7",
+      "name": "GPT-5 Review",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        1200,
+        -80
+      ],
+      "typeVersion": 1.9
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ты опытный Python-разработчик. Проведи code review изменений в Pull Request.\n\nАнализируй только добавленные и изменённые строки diff. Не комментируй неизменённый код без необходимости.\n\nИщи реальные ошибки, регрессии, уязвимости и проблемы производительности.\nДля каждой настоящей проблемы укажи файл, изменённую строку, причину и конкретное исправление.\nНе выдумывай замечаний. Если существенных проблем нет, так и скажи.\n\nDiff:\n{{ $json.data }}",
+        "options": {
+          "systemMessage": ""
+        }
+      },
+      "id": "dad79064-6515-441b-aef3-598da481a3b3",
+      "name": "DeepSeek Review",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        1200,
+        336
+      ],
+      "typeVersion": 1.9
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "openai/gpt-5",
+          "mode": "list",
+          "cachedResultName": "openai/gpt-5"
+        },
+        "options": {}
+      },
+      "id": "78c8690f-0443-4a74-b338-5ff042e1d724",
+      "name": "VseLLM GPT-5",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        1200,
+        96
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "QtkQUWbvdeU3QmWZ",
+          "name": "VseLLM ChatGPT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "deepseek-flash",
+          "mode": "list",
+          "cachedResultName": "deepseek-flash"
+        },
+        "options": {}
+      },
+      "id": "e8dea972-33f3-4122-a0d9-db5f7d21b6f0",
+      "name": "DeepSeek Flash",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        1200,
+        512
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "ifHpjMVEyQTPyqz5",
+          "name": "DeepSeek API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "nullifierx1",
+          "mode": "list",
+          "cachedResultName": "nullifierx1",
+          "cachedResultUrl": "https://github.com/nullifierx1"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "n8n-code-review-test",
+          "mode": "list",
+          "cachedResultName": "n8n-code-review-test",
+          "cachedResultUrl": "https://github.com/nullifierx1/n8n-code-review-test"
+        },
+        "pullRequestNumber": "={{ $(\"Parse PR Comment\").first().json.pr_number }}",
+        "event": "comment",
+        "body": "=🤖 AI Code Review · GPT-5 via VseLLM\n\n{{ $json.output }}",
+        "additionalFields": {}
+      },
+      "id": "bea9bff1-ca7e-41bf-8fcc-08b4a01680b1",
+      "name": "Post GPT-5 Review",
+      "type": "n8n-nodes-base.github",
+      "position": [
+        1488,
+        -80
+      ],
+      "typeVersion": 1.1,
+      "webhookId": "2ed1ca78-ee26-40b9-a09a-f90cbda843d7",
+      "credentials": {
+        "githubApi": {
+          "id": "GsfGcSmr0b1futs9",
+          "name": "GitHub account 68"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "review",
+        "owner": {
+          "__rl": true,
+          "value": "nullifierx1",
+          "mode": "list",
+          "cachedResultName": "nullifierx1",
+          "cachedResultUrl": "https://github.com/nullifierx1"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "n8n-code-review-test",
+          "mode": "list",
+          "cachedResultName": "n8n-code-review-test",
+          "cachedResultUrl": "https://github.com/nullifierx1/n8n-code-review-test"
+        },
+        "pullRequestNumber": "={{ $(\"Parse PR Comment\").first().json.pr_number }}",
+        "event": "comment",
+        "body": "=🤖 AI Code Review · DeepSeek Flash\n\n{{ $json.output }}",
+        "additionalFields": {}
+      },
+      "id": "1d0c84e1-0be5-454d-a7f0-40d347983e45",
+      "name": "Post DeepSeek Review",
+      "type": "n8n-nodes-base.github",
+      "position": [
+        1488,
+        336
+      ],
+      "typeVersion": 1.1,
+      "webhookId": "0804fce3-ad0b-4547-a875-c1fcae59d72f",
+      "credentials": {
+        "githubApi": {
+          "id": "GsfGcSmr0b1futs9",
+          "name": "GitHub account 68"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "LjO8YgyJYIZjH6Vb",
+          "mode": "list",
+          "cachedResultName": "reviewed_prs",
+          "cachedResultUrl": "/projects/6NeKLg2x1W0oWnNT/datatables/LjO8YgyJYIZjH6Vb"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "review_key": "={{ $('Parse PR Comment').first().json.review_key }}",
+            "pr_number": "={{ $('Parse PR Comment').first().json.pr_number }}",
+            "model": "={{ $('Parse PR Comment').first().json.model }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "review_key",
+              "displayName": "review_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "pr_number",
+              "displayName": "pr_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "0e47df44-e0de-481f-b014-ca1bc593bb6b",
+      "name": "Record Reviewed PR",
+      "type": "n8n-nodes-base.dataTable",
+      "position": [
+        1760,
+        160
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=\nТы опытный Python-разработчик.\n\nПроведи code review одного блока изменений GitHub Pull Request.\n\nФайл: {{ $json.path }}\nСтрока: {{ $json.line }}\n\nИзменения:\n{{ $json.patch }}\n\nНайди реальные ошибки, регрессии и проблемы безопасности.\nНе придумывай проблемы, которых нет.\n\nВерни краткий комментарий на русском языке, который можно\nприкрепить непосредственно к изменённой строке GitHub.\n\nЕсли обнаружена проблема, объясни её и предложи исправление.\nЕсли проблем нет, кратко сообщи, что блок проверен и замечаний нет.\n\nНе используй JSON или Markdown-ограждения.\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1200,
+        704
+      ],
+      "id": "2bc325c7-6172-4a50-bcb8-5912e58d611a",
+      "name": "Inline Review Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "openai/gpt-5",
+          "mode": "list",
+          "cachedResultName": "openai/gpt-5"
+        },
+        "options": {}
+      },
+      "id": "f5babe6f-4c00-48e0-84cf-088858e718a2",
+      "name": "VseLLM GPT-5.2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        1200,
+        896
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "QtkQUWbvdeU3QmWZ",
+          "name": "VseLLM ChatGPT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/nullifierx1/n8n-code-review-test/pulls/5/reviews",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  {\n    event: \"COMMENT\",\n    body: \"🤖 AI Inline Code Review\",\n    comments: [\n      {\n        path: $(\"Parse Diff Hunks\").first().json.path,\n        line: $(\"Parse Diff Hunks\").first().json.line,\n        side: $(\"Parse Diff Hunks\").first().json.side,\n        body: $json.output\n      }\n    ]\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1632,
+        704
+      ],
+      "id": "fe3b589f-ee8f-4380-ba8d-aa236e683814",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "5mdYnoI1xfUV0ufI",
+          "name": "Bearer Auth account 38"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst diff = $input.first().json.data;\n\nif (typeof diff !== 'string') {\n  throw new Error('Expected diff text in data');\n}\n\nconst result = [];\n\nlet file = null;\nlet hunk = null;\nlet newLine = 0;\nlet oldLine = 0;\n\nfunction saveHunk() {\n  if (!hunk) return;\n\n  if (hunk.line === null) {\n    // Hunk contains no added lines.\n    // Anchor the comment to a removed line.\n    hunk.line = hunk.deletedLine;\n    hunk.side = 'LEFT';\n  }\n\n  if (hunk.line !== null) {\n    result.push({\n      json: {\n        path: file,\n        hunk_index: result.length + 1,\n        line: hunk.line,\n        side: hunk.side,\n        patch: hunk.lines.join('\\n'),\n      },\n    });\n  }\n}\n\nfor (const row of diff.split('\\n')) {\n  if (row.startsWith('diff --git ')) {\n    saveHunk();\n    hunk = null;\n    file = null;\n    continue;\n  }\n\n  if (row.startsWith('+++ b/')) {\n    file = row.slice(6);\n    continue;\n  }\n\n  if (row === '+++ /dev/null') {\n    file = null;\n    continue;\n  }\n\n  const match = row.match(\n    /^@@ -(\\d+)(?:,\\d+)? \\+(\\d+)(?:,\\d+)? @@/\n  );\n\n  if (match) {\n    saveHunk();\n\n    oldLine = Number(match[1]);\n    newLine = Number(match[2]);\n\n    hunk = {\n      lines: [row],\n      line: null,\n      deletedLine: null,\n      side: 'RIGHT',\n    };\n    continue;\n  }\n\n  if (!hunk) continue;\n\n  if (row.startsWith('+')) {\n    hunk.line = newLine;\n    newLine++;\n  } else if (row.startsWith('-')) {\n    hunk.deletedLine = oldLine;\n    oldLine++;\n  } else if (row.startsWith(' ')) {\n    oldLine++;\n    newLine++;\n  } else if (row.startsWith('\\\\ No newline')) {\n    // Metadata, not a source line.\n  }\n\n  hunk.lines.push(row);\n}\n\nsaveHunk();\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        864,
+        416
+      ],
+      "id": "1c20d291-8a21-4c2c-8d60-9f9841947ecc",
+      "name": "Parse Diff Hunks"
+    }
+  ],
+  "connections": {
+    "PR Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Parse PR Comment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse PR Comment": {
+      "main": [
+        [
+          {
+            "node": "Skip Already Reviewed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip Already Reviewed": {
+      "main": [
+        [
+          {
+            "node": "Get PR Diff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get PR Diff": {
+      "main": [
+        [
+          {
+            "node": "Is Main Model?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Parse Diff Hunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Main Model?": {
+      "main": [
+        [
+          {
+            "node": "GPT-5 Review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "DeepSeek Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT-5 Review": {
+      "main": [
+        [
+          {
+            "node": "Post GPT-5 Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Review": {
+      "main": [
+        [
+          {
+            "node": "Post DeepSeek Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VseLLM GPT-5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "GPT-5 Review",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Flash": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "DeepSeek Review",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post GPT-5 Review": {
+      "main": [
+        [
+          {
+            "node": "Record Reviewed PR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post DeepSeek Review": {
+      "main": [
+        [
+          {
+            "node": "Record Reviewed PR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inline Review Agent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VseLLM GPT-5.2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Inline Review Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Diff Hunks": {
+      "main": [
+        [
+          {
+            "node": "Inline Review Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "68dbbb4e8fa686c3fd4e9982ade6836edb66976f207553e7ac22df961581c78c"
+  }
+}
