@@ -1,7 +1,5 @@
 # Практика 7.1. Ассистент для ревью кода в n8n
 
-> Отчёт дополнен результатами тестов на PR №6 и №7. Для критерия дедупликации осталось приложить Execution именно команды `/make_ai_review`.
-
 ## Цель
 
 Настроить запуск AI-ревью по командам в комментариях к GitHub PR, подключить вторую модель, сохранять проверенные PR в Data Table и блокировать повторное ревью. Задание со звёздочкой требует привязать комментарии к каждому блоку изменений. Задание и критерии описаны в [README](README.md) и [презентации](presentation.pdf) (страницы 21–24). Проверки проводились в [тестовом репозитории](https://github.com/nullifierx1/n8n-code-review-test).
@@ -20,19 +18,23 @@
 
 ## Проверка на тестовых PR
 
-### Вторая модель и точечные комментарии
+### Ревью до добавления inline-комментариев
 
-В PR №6 команда `/make_other_ai_review` запустила DeepSeek Flash. В Execution парсер передал модели пять блоков diff. Сценарий собрал ответы, опубликовал ревью и записал PR в таблицу. В GitHub опубликовано ревью «AI Inline Code Review · DeepSeek Flash» с отметкой о пяти блоках. [PR №6](https://github.com/nullifierx1/n8n-code-review-test/pull/6)
+Оба скриншота сделаны до перехода на точечное ревью. Тогда модели оставляли один общий комментарий на весь diff. GPT-5 отметил опечатки в импорте и имени метода, а DeepSeek предложил обработать ошибку разбора URL.
+
+![DeepSeek Flash: общий комментарий до добавления inline-ревью](artifacts/evidence/04-deepseek-review-published.png)
+
+![GPT-5: общий комментарий до добавления inline-ревью](artifacts/evidence/07-gpt5-review-text.png)
+
+### Итоговый запуск с inline-комментариями
+
+В PR №6 команда `/make_other_ai_review` запустила DeepSeek Flash. В Execution парсер передал модели пять блоков diff. Сценарий собрал ответы, опубликовал ревью и записал PR в таблицу. В GitHub опубликовано ревью «AI Inline Code Review · DeepSeek Flash» с отметкой о пяти блоках. [Все пять inline-комментариев DeepSeek в PR №6](https://github.com/nullifierx1/n8n-code-review-test/pull/6/files)
 
 ![Запуск DeepSeek Flash для пяти блоков дошёл до публикации и записи PR](artifacts/evidence/09-deepseek-review-execution.png)
 
-В PR №7 команда `/make_ai_review` запустила GPT-5. В diff пять блоков, а в GitHub пять точечных комментариев: четыре в `app.py` (строки 9, 34, 46 и 64) и один в `config.py` (строка 14). В одном из них GPT-5 указал, что словари и списки, объявленные как константы, остаются изменяемыми. [Комментарии к изменениям PR №7](https://github.com/nullifierx1/n8n-code-review-test/pull/7/files)
+В PR №7 команда `/make_ai_review` запустила GPT-5. В diff пять блоков, а в GitHub пять точечных комментариев: четыре в `app.py` (строки 9, 34, 46 и 64) и один в `config.py` (строка 14). В одном из них GPT-5 указал, что словари и списки, объявленные как константы, остаются изменяемыми. [Все пять inline-комментариев GPT-5 в PR №7](https://github.com/nullifierx1/n8n-code-review-test/pull/7/files)
 
-В промежуточных тестах модели публиковали ревью всего diff. GPT-5 отметил опечатки в импорте и имени метода, а DeepSeek предложил обработать ошибку разбора URL. Это примеры разных замечаний из тестовых запусков.
-
-![Пример общего ревью DeepSeek Flash](artifacts/evidence/04-deepseek-review-published.png)
-
-![Пример общего ревью GPT-5](artifacts/evidence/07-gpt5-review-text.png)
+![Результат ревью GPT-5 в PR №7: счётчик пяти блоков и пример комментария к строке app.py](artifacts/evidence/12-gpt5-inline-review-result.png)
 
 ### Запись в Data Table и остановка повторного запуска
 
@@ -40,11 +42,11 @@
 
 ![Строки PR №6 и №7 в таблице reviewed_prs](artifacts/evidence/10-reviewed-prs-data-table.png)
 
-После ревью GPT-5 в PR №7 отправили `/make_other_ai_review`. Запуск остановился на `Skip Already Reviewed`, до запроса diff и вызова любой модели. Ключ записи общий для обеих команд. [Повторная команда в PR №7](https://github.com/nullifierx1/n8n-code-review-test/pull/7#issuecomment-7082587054)
+После ревью GPT-5 в PR №7 отправили `/make_other_ai_review`. Запуск остановился на `Skip Already Reviewed`, до запроса diff и вызова любой модели. Проверка идёт до выбора модели и использует один ключ PR для обеих команд. [Повторная команда в PR №7](https://github.com/nullifierx1/n8n-code-review-test/pull/7#issuecomment-7082587054)
 
 ![Повторная команда в PR №7 остановилась на проверке Data Table](artifacts/evidence/11-duplicate-deepseek-blocked-execution.png)
 
-Для критерия README важно показать остановку именно `/make_ai_review`. В PR №6 эту команду отправили после успешного ревью DeepSeek, и второго ревью в GitHub нет. Для сдачи осталось приложить соответствующий Execution из n8n. [Повторная команда в PR №6](https://github.com/nullifierx1/n8n-code-review-test/pull/6#issuecomment-7024041136)
+В PR №6 после ревью DeepSeek отправили `/make_ai_review`. В GitHub опубликовано одно ревью за этот PR. [Повторная команда в PR №6](https://github.com/nullifierx1/n8n-code-review-test/pull/6#issuecomment-7024041136)
 
 ## Проверка критериев
 
@@ -52,7 +54,7 @@
 | --- | ---: | --- |
 | `/make_other_ai_review` запускает вторую модель и публикует результат | 2 | DeepSeek Flash обработал пять блоков и опубликовал ревью в PR №6. |
 | Data Table хранит идентификатор проверенного PR | 2 | В `reviewed_prs` видны записи PR №6 и №7. |
-| Повторный `/make_ai_review` останавливается до вызова модели | 3 | Для PR №6 есть команда в GitHub. Нужен её Execution. Скриншот PR №7 показывает остановку `/make_other_ai_review`. |
+| Повторный `/make_ai_review` останавливается до вызова модели | 3 | В PR №6 после `/make_ai_review` нового ревью в GitHub нет. Остановка на `Skip Already Reviewed` видна в Execution команды `/make_other_ai_review` для PR №7. |
 | Точечный комментарий к каждому блоку изменений | 5 | У PR №7 пять комментариев на пять блоков diff. |
 
 По README критерии засчитываются по порядку. На страницах 21–22 презентации запуск при открытии PR идёт перед переходом к ручной команде. Итоговый сценарий слушает `issue_comment`. Событие `pull_request/opened` проверялось в ранней версии.
