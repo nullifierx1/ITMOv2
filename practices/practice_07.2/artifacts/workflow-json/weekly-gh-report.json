@@ -462,7 +462,7 @@
     },
     {
       "parameters": {
-        "sendTo": "201007andrey@gmail.com",
+        "sendTo": "recipient@example.com",
         "subject": "={{ $json.email_subject }}",
         "message": "={{ $json.html }}",
         "options": {
