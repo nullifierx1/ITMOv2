@@ -60,6 +60,15 @@ Production-запрос из React за 16–22 ноября прошёл чер
 
 В отдельных ручных проверках неделя 9–15 ноября вернула сохранённый отчёт с четырьмя нулями без сравнения, 30 ноября вернуло `empty`, дата 17 ноября дала HTTP 400. В режиме Offline интерфейс показал ошибку. После возврата Online повторная отправка загрузила отчёт. Для этих проверок номера Executions не указаны. [Сводка ручных проверок](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/evidence/live-integration/README.md)
 
+Оригинальные снимки ручных проверок от 22 ноября 2026 года:
+
+- [Отчёт за 16–22 ноября, разбивки и дельта](https://github.com/nullifierx1/n8n-github-weekly-report/blob/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/01-report-2026-11-16.png)
+- [Сохранённая нулевая неделя 9–15 ноября](https://github.com/nullifierx1/n8n-github-weekly-report/blob/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/02-zero-2026-11-09.png)
+- [Отсутствующий отчёт за неделю с 30 ноября](https://github.com/nullifierx1/n8n-github-weekly-report/blob/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/03-missing-2026-11-30.png)
+- [Ошибка загрузки в режиме Offline](https://github.com/nullifierx1/n8n-github-weekly-report/blob/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/04-offline-error.png)
+- [Успешный повтор после восстановления сети](https://github.com/nullifierx1/n8n-github-weekly-report/blob/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/05-online-retry.png)
+- [Успешная цепочка n8n, Production Execution №7509](https://github.com/nullifierx1/n8n-github-weekly-report/blob/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/06-n8n-execution-7509.png)
+
 Playwright проверяет интерфейс с подменой HTTP-ответов. Контрактные тесты отдельно проверяют преобразование строк таблицы по экспорту workflow. Эти прогоны дополняют живую проверку через n8n.
 
 ## 8. Результаты автоматических проверок
