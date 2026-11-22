@@ -1,0 +1,652 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "TaNHNo4q6sAD9eY9",
+          "mode": "list",
+          "cachedResultName": "weekly_issue_stats",
+          "cachedResultUrl": "/projects/6NeKLg2x1W0oWnNT/datatables/TaNHNo4q6sAD9eY9"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "report_key",
+              "keyValue": "={{ $('Aggregate Weekly Statistics1').first().json.repository + '#' + new Date(Date.parse($('Aggregate Weekly Statistics1').first().json.week_start + 'T00:00:00.000Z') - 604800000).toISOString().slice(0, 10) }}"
+            }
+          ]
+        },
+        "limit": 2
+      },
+      "id": "6f9f0127-130d-46f4-bd6e-8fd870e48981",
+      "name": "Read Previous Week",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        3520,
+        336
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const current = $('Aggregate Weekly Statistics1').first().json;\nconst responseItems = $input.all().map(item => item.json);\nconst lastMonday = new Date(Date.parse(`${current.week_start}T00:00:00.000Z`) - 7 * 86400000).toISOString().slice(0, 10);\nconst key = `${current.repository}#${lastMonday}`;\nconst matching = responseItems.filter(row => row.report_key === key);\nif (matching.length > 1) throw new Error(`Duplicate weekly records for ${key}`);\n\nconst names = ['issues_created', 'issues_closed', 'prs_created', 'prs_merged'];\nconst previous = matching[0] ?? null;\nconst delta = {};\nconst previousValues = {};\nconst comparisonAvailable = previous !== null;\n\nfor (const name of names) {\n  const now = Number(current[name]);\n  if (!Number.isFinite(now)) throw new Error(`Invalid current value: ${name}`);\n  if (!comparisonAvailable) {\n    previousValues[name] = null;\n    delta[name] = null;\n  } else {\n    const then = Number(previous[name]);\n    if (previous[name] == null || !Number.isFinite(then)) throw new Error(`Invalid previous ${name}`);\n    previousValues[name] = then;\n    delta[name] = now - then;\n  }\n}\nconst previousTypes = comparisonAvailable ? JSON.parse(previous.by_type_json || '{}') : null;\nconst typeDelta = {};\nfor (const category of ['bug', 'task', 'feature', 'unknown']) {\n  typeDelta[category] = comparisonAvailable\n    ? Number(current.by_type[category] ?? 0) - Number(previousTypes[category] ?? 0)\n    : null;\n}\nreturn [{json: {\n  ...current,\n  comparison_available: comparisonAvailable,\n  previous_week_start: lastMonday,\n  previous: previousValues,\n  delta,\n  previous_by_type: previousTypes,\n  type_delta: typeDelta\n}}];"
+      },
+      "id": "826e591d-99f0-428d-a6a8-dbb4d2438eec",
+      "name": "Calculate Weekly Delta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3744,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ты аналитик GitHub. Напиши по-русски короткий комментарий недели (3-5 предложений) для email-отчёта. Используй только входные числа, не придумывай события, причины или участников. Если нет прошлой недели, прямо скажи, что сравнение недоступно. Не используй Markdown, HTML или JSON.\n\nРепозиторий: {{ $json.repository }}\nНеделя: {{ $json.week_start }} — {{ $json.week_end }}\nТекущие показатели: {{ JSON.stringify({issues_created:$json.issues_created,issues_closed:$json.issues_closed,prs_created:$json.prs_created,prs_merged:$json.prs_merged}) }}\nТекущие Issues по типам: {{ JSON.stringify($json.by_type) }}\nТекущие Issues по авторам: {{ JSON.stringify($json.by_author) }}\nДанные прошлой недели доступны: {{ $json.comparison_available }}\nПрошлая неделя: {{ $json.previous_week_start }}\nПрошлые показатели: {{ JSON.stringify($json.previous) }}\nИзменение показателей: {{ JSON.stringify($json.delta) }}\nИзменение по типам: {{ JSON.stringify($json.type_delta) }}"
+      },
+      "id": "3d03ac56-050f-43a3-a344-04c716996186",
+      "name": "AI Weekly Commentary",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        3936,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "openai/gpt-5",
+          "mode": "list",
+          "cachedResultName": "openai/gpt-5"
+        },
+        "options": {}
+      },
+      "id": "e6586f4a-7cce-4bdb-a809-320a0f1c5105",
+      "name": "VseLLM GPT-5 Weekly",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        3936,
+        432
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "QtkQUWbvdeU3QmWZ",
+          "name": "VseLLM ChatGPT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const period = $('Prepare Weekly Date Range').first().json;\nconst queries = [\n  {node: 'Search Created Issues', field: 'created_at'},\n  {node: 'Search Closed Issues', field: 'closed_at'},\n  {node: 'Search Created PRs', field: 'created_at'},\n  {node: 'Search Merged PRs', field: 'pull_request.merged_at'},\n];\n\nconst results = queries.map(({node, field}) => {\n  const response = $(node).first().json;\n  if (!Array.isArray(response.items) || typeof response.total_count !== 'number') {\n    throw new Error(`${node}: unexpected GitHub Search API response`);\n  }\n  if (response.incomplete_results) {\n    throw new Error(`${node}: GitHub reports incomplete search results`);\n  }\n  if (response.total_count > 100) {\n    throw new Error(`${node}: ${response.total_count} results exceed page limit 100; add pagination`);\n  }\n  // Search filters dates by day. Enforce exact UTC boundaries here.\n  const items = response.items.filter(item => {\n    const value = field === 'pull_request.merged_at'\n      ? item.pull_request?.merged_at\n      : item[field];\n    if (!value) return false;\n    return value >= period.start_iso && value < period.end_iso;\n  });\n  return items;\n});\n\nconst [createdIssues, closedIssues, createdPRs, mergedPRs] = results;\nconst byType = { bug: 0, task: 0, feature: 0, unknown: 0 };\nconst byAuthor = {};\n\nfor (const issue of createdIssues) {\n  const names = new Set((issue.labels || []).map(l =>\n    typeof l === 'string' ? l : l.name).filter(Boolean));\n  const assigned = ['bug', 'task', 'feature'].filter(t => names.has(t));\n  const type = names.has('needs-triage') || assigned.length !== 1\n    ? 'unknown' : assigned[0];\n  byType[type]++;\n  const author = issue.user?.login || 'unknown';\n  byAuthor[author] = (byAuthor[author] || 0) + 1;\n}\n\nreturn [{json: {\n  repository: period.repository,\n  week_start: period.week_start,\n  week_end: period.week_end,\n  week_end_exclusive: period.week_end_exclusive,\n  is_test_override: period.is_test_override,\n  issues_created: createdIssues.length,\n  issues_closed: closedIssues.length,\n  prs_created: createdPRs.length,\n  prs_merged: mergedPRs.length,\n  by_type: byType,\n  by_author: Object.entries(byAuthor)\n    .map(([author, issues_created]) => ({author, issues_created}))\n    .sort((a,b) => b.issues_created-a.issues_created || a.author.localeCompare(b.author)),\n  sample_issue_numbers: createdIssues.map(i => i.number),\n}}];"
+      },
+      "id": "78bd4f26-5e98-4cd7-b9ce-fed81c51646f",
+      "name": "Aggregate Weekly Statistics1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3056,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.github.com/search/issues",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ 'repo:' + $('Prepare Weekly Date Range').first().json.repository + ' is:pr created:' + $('Prepare Weekly Date Range').first().json.github_date_range }}"
+            },
+            {
+              "name": "per_page",
+              "value": "100"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "01b3808a-4dd9-49e3-92a4-90439f3a16c5",
+      "name": "Search Created PRs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2608,
+        336
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "5mdYnoI1xfUV0ufI",
+          "name": "Bearer Auth account 38"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.github.com/search/issues",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ 'repo:' + $('Prepare Weekly Date Range').first().json.repository + ' is:pr is:merged merged:' + $('Prepare Weekly Date Range').first().json.github_date_range }}"
+            },
+            {
+              "name": "per_page",
+              "value": "100"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1431daf8-044c-4b6a-990e-cb93f581f68d",
+      "name": "Search Merged PRs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2832,
+        240
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "5mdYnoI1xfUV0ufI",
+          "name": "Bearer Auth account 38"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * MON"
+            }
+          ]
+        }
+      },
+      "id": "7669fd26-444f-4e9d-9f7e-e1eb809aabd0",
+      "name": "Every Monday 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        1680,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Optional test override: set to '2026-11-09' or '2026-11-16'\nconst manualWeekStart = '';\nconst repository = 'nullifierx1/n8n-code-review-test';\n\nconst today = new Date();\nconst utcToday = new Date(Date.UTC(\n  today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()\n));\nconst daysAfterMonday = (utcToday.getUTCDay() + 6) % 7;\nconst currentMonday = new Date(utcToday);\ncurrentMonday.setUTCDate(currentMonday.getUTCDate() - daysAfterMonday);\n\nlet start;\nif (manualWeekStart) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(manualWeekStart)) {\n    throw new Error('manualWeekStart must use YYYY-MM-DD');\n  }\n  start = new Date(`${manualWeekStart}T00:00:00.000Z`);\n  if (Number.isNaN(start.getTime()) || start.getUTCDay() !== 1 ||\n      start.toISOString().slice(0, 10) !== manualWeekStart) {\n    throw new Error('manualWeekStart must be a valid Monday');\n  }\n} else {\n  start = new Date(currentMonday);\n  start.setUTCDate(start.getUTCDate() - 7);\n}\n\nconst end = new Date(start);\nend.setUTCDate(end.getUTCDate() + 7);\nconst sunday = new Date(end);\nsunday.setUTCDate(sunday.getUTCDate() - 1);\nconst format = d => d.toISOString().slice(0, 10);\n\nreturn [{ json: {\n  repository,\n  week_start: format(start),\n  week_end: format(sunday),\n  week_end_exclusive: format(end),\n  start_iso: start.toISOString(),\n  end_iso: end.toISOString(),\n  github_date_range: `${format(start)}..${format(sunday)}`,\n  is_test_override: Boolean(manualWeekStart),\n}}];"
+      },
+      "id": "9bf05695-2b84-42aa-8f33-e5f3b75829ee",
+      "name": "Prepare Weekly Date Range",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1904,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.github.com/search/issues",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ 'repo:' + $('Prepare Weekly Date Range').first().json.repository + ' is:issue created:' + $('Prepare Weekly Date Range').first().json.github_date_range }}"
+            },
+            {
+              "name": "per_page",
+              "value": "100"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a973e8ab-7170-42e2-b823-a55cb87656e4",
+      "name": "Search Created Issues",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2128,
+        336
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "5mdYnoI1xfUV0ufI",
+          "name": "Bearer Auth account 38"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.github.com/search/issues",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ 'repo:' + $('Prepare Weekly Date Range').first().json.repository + ' is:issue closed:' + $('Prepare Weekly Date Range').first().json.github_date_range }}"
+            },
+            {
+              "name": "per_page",
+              "value": "100"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "41370dce-45cb-46d4-af42-c8690ba5a9a0",
+      "name": "Search Closed Issues",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2384,
+        224
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "5mdYnoI1xfUV0ufI",
+          "name": "Bearer Auth account 38"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "TaNHNo4q6sAD9eY9",
+          "mode": "list",
+          "cachedResultName": "weekly_issue_stats",
+          "cachedResultUrl": "/projects/6NeKLg2x1W0oWnNT/datatables/TaNHNo4q6sAD9eY9"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "report_key",
+              "keyValue": "={{ $('Aggregate Weekly Statistics1').first().json.repository + '#' + $('Aggregate Weekly Statistics1').first().json.week_start }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "report_key": "={{ $('Aggregate Weekly Statistics1').first().json.repository + '#' + $('Aggregate Weekly Statistics1').first().json.week_start }}",
+            "week_start": "={{ $('Aggregate Weekly Statistics1').first().json.week_start + 'T00:00:00.000Z' }}",
+            "week_end": "={{ $('Aggregate Weekly Statistics1').first().json.week_end_exclusive + 'T00:00:00.000Z' }}",
+            "issues_created": "={{ $('Aggregate Weekly Statistics1').first().json.issues_created }}",
+            "issues_closed": "={{ $('Aggregate Weekly Statistics1').first().json.issues_closed }}",
+            "prs_created": "={{ $('Aggregate Weekly Statistics1').first().json.prs_created }}",
+            "prs_merged": "={{ $('Aggregate Weekly Statistics1').first().json.prs_merged }}",
+            "by_type_json": "={{ JSON.stringify($('Aggregate Weekly Statistics1').first().json.by_type) }}",
+            "by_author_json": "={{ JSON.stringify($('Aggregate Weekly Statistics1').first().json.by_author) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "report_key",
+              "displayName": "report_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "week_start",
+              "displayName": "week_start",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "week_end",
+              "displayName": "week_end",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "issues_created",
+              "displayName": "issues_created",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "issues_closed",
+              "displayName": "issues_closed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "prs_created",
+              "displayName": "prs_created",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "prs_merged",
+              "displayName": "prs_merged",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "by_type_json",
+              "displayName": "by_type_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "by_author_json",
+              "displayName": "by_author_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "c7efc148-71a0-475f-859d-ef8380314b34",
+      "name": "Upsert Weekly Statistics",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        3280,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "201007andrey@gmail.com",
+        "subject": "={{ $json.email_subject }}",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "7af0cd84-a7f4-4ae8-a583-8a34aff0f5ce",
+      "name": "Send Gmail Weekly Report",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        4480,
+        240
+      ],
+      "webhookId": "61e4478d-76a3-466c-aea1-25cebe7f653c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "TKI0AXBUVGSVJwtP",
+          "name": "Gmail account 21"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = $('Calculate Weekly Delta').first().json;\nconst rawComment = $('AI Weekly Commentary').first().json;\nconst comment = String(rawComment.text ?? rawComment.output ?? rawComment.response ?? '').trim();\nif (!comment) throw new Error('Basic LLM Chain returned an empty AI commentary');\nconst esc = v => String(v ?? '').replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]));\nconst count = x => {\n  if (!Number.isInteger(x) || x < 0) throw new Error(`Invalid count ${x}`);\n  return String(x);\n};\nconst categories = [['bug','Bug'],['task','Task'],['feature','Feature'],['unknown','Unknown']];\nconst row = (label, value) => `<tr><td style=\"padding:9px;border-bottom:1px solid #e2e8f0\">${esc(label)}</td><td style=\"padding:9px;text-align:right;border-bottom:1px solid #e2e8f0\">${esc(value)}</td></tr>`;\nconst categoryRows = categories.map(([key,label]) => row(label,count(s.by_type[key] ?? 0))).join('');\nconst authors = (s.by_author ?? []).map(a => row(a.author,count(a.issues_created))).join('') || '<tr><td colspan=\"2\" style=\"padding:9px\">No authors this week</td></tr>';\nconst metrics = [['Created Issues','issues_created'],['Closed Issues','issues_closed'],['Created PRs','prs_created'],['Merged PRs','prs_merged']];\nconst diff = n => n === null ? 'N/A' : n > 0 ? `+${n}` : String(n);\nconst compRows = metrics.map(([label,key]) => `<tr>\n<td style=\"padding:9px;border-bottom:1px solid #e2e8f0\">${esc(label)}</td>\n<td style=\"padding:9px;text-align:right;border-bottom:1px solid #e2e8f0\">${s.comparison_available ? count(s.previous[key]) : 'N/A'}</td>\n<td style=\"padding:9px;text-align:right;border-bottom:1px solid #e2e8f0\">${count(s[key])}</td>\n<td style=\"padding:9px;text-align:right;border-bottom:1px solid #e2e8f0\">${esc(diff(s.delta[key]))}</td>\n</tr>`).join('');\nconst title = `GitHub Weekly Report | ${s.week_start} - ${s.week_end}`;\nconst html = `<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head><body style=\"margin:0;padding:24px;background:#f5f7fa;font-family:Arial,Helvetica,sans-serif;color:#202939\"><div style=\"max-width:650px;margin:auto;padding:24px;background:#fff;border:1px solid #e2e8f0;border-radius:10px\">\n<h1 style=\"font-size:24px;margin:0 0 6px\">GitHub Weekly Report</h1><p style=\"color:#526177;margin:0 0 20px\">${esc(s.repository)}<br>Week: ${esc(s.week_start)} - ${esc(s.week_end)}</p>\n<h2 style=\"font-size:18px\">Summary</h2><table style=\"border-collapse:collapse;width:100%;font-size:14px\"><tbody>${metrics.map(([label,key])=>row(label,count(s[key]))).join('')}</tbody></table>\n<h2 style=\"font-size:18px;margin-top:24px\">Weekly Comparison</h2><p style=\"color:#526177;font-size:12px\">Previous week starts: ${esc(s.previous_week_start)}${!s.comparison_available?' — no previous record in Data Table':''}</p>\n<table style=\"border-collapse:collapse;width:100%;font-size:14px\"><thead><tr style=\"background:#eef2f7\"><th style=\"padding:9px;text-align:left\">Metric</th><th style=\"padding:9px;text-align:right\">Previous</th><th style=\"padding:9px;text-align:right\">Current</th><th style=\"padding:9px;text-align:right\">Δ</th></tr></thead><tbody>${compRows}</tbody></table>\n<h2 style=\"font-size:18px;margin-top:24px\">Created Issues by type</h2><table style=\"border-collapse:collapse;width:100%;font-size:14px\"><thead><tr style=\"background:#eef2f7\"><th style=\"padding:9px;text-align:left\">Type</th><th style=\"padding:9px;text-align:right\">Count</th></tr></thead><tbody>${categoryRows}</tbody></table>\n<h2 style=\"font-size:18px;margin-top:24px\">Created Issues by author</h2><table style=\"border-collapse:collapse;width:100%;font-size:14px\"><thead><tr style=\"background:#eef2f7\"><th style=\"padding:9px;text-align:left\">Author</th><th style=\"padding:9px;text-align:right\">Issues</th></tr></thead><tbody>${authors}</tbody></table>\n<h2 style=\"font-size:18px;margin-top:24px\">AI-комментарий недели</h2><p style=\"font-size:14px;line-height:1.55\">${esc(comment).replace(/\\n/g,'<br>')}</p>\n${s.is_test_override?'<p style=\"font-size:12px;color:#7b5b22;margin-top:18px\">Manual test: selected reporting week was overridden.</p>':''}\n<p style=\"font-size:12px;color:#667085;margin-top:24px\">Generated by n8n using GitHub API and GPT-5 via VseLLM.</p></div></body></html>`;\nreturn [{json:{...s,ai_comment:comment,email_subject:title,html}}];"
+      },
+      "id": "9bedf5a7-4f15-43d3-b84d-94202ef3df5d",
+      "name": "Build HTML Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4272,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Read Previous Week": {
+      "main": [
+        [
+          {
+            "node": "Calculate Weekly Delta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Weekly Delta": {
+      "main": [
+        [
+          {
+            "node": "AI Weekly Commentary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Weekly Commentary": {
+      "main": [
+        [
+          {
+            "node": "Build HTML Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VseLLM GPT-5 Weekly": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Weekly Commentary",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Weekly Statistics1": {
+      "main": [
+        [
+          {
+            "node": "Upsert Weekly Statistics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Created PRs": {
+      "main": [
+        [
+          {
+            "node": "Search Merged PRs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Merged PRs": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Weekly Statistics1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Monday 09:00": {
+      "main": [
+        [
+          {
+            "node": "Prepare Weekly Date Range",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Weekly Date Range": {
+      "main": [
+        [
+          {
+            "node": "Search Created Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Created Issues": {
+      "main": [
+        [
+          {
+            "node": "Search Closed Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Closed Issues": {
+      "main": [
+        [
+          {
+            "node": "Search Created PRs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Weekly Statistics": {
+      "main": [
+        [
+          {
+            "node": "Read Previous Week",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build HTML Report": {
+      "main": [
+        [
+          {
+            "node": "Send Gmail Weekly Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "68dbbb4e8fa686c3fd4e9982ade6836edb66976f207553e7ac22df961581c78c"
+  }
+}

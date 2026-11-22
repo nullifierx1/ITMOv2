@@ -1,0 +1,496 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "owner": {
+          "__rl": true,
+          "value": "nullifierx1",
+          "mode": "list",
+          "cachedResultName": "nullifierx1",
+          "cachedResultUrl": "https://github.com/nullifierx1"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "n8n-code-review-test",
+          "mode": "list",
+          "cachedResultName": "n8n-code-review-test",
+          "cachedResultUrl": "https://github.com/nullifierx1/n8n-code-review-test"
+        },
+        "events": [
+          "issues"
+        ],
+        "options": {}
+      },
+      "id": "5df62611-dfda-4c24-8a8d-75d7403829dd",
+      "name": "GitHub Issue Trigger",
+      "type": "n8n-nodes-base.githubTrigger",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        272
+      ],
+      "webhookId": "6bb6053c-3072-438a-aee1-3fd8376090cf",
+      "credentials": {
+        "githubApi": {
+          "id": "GsfGcSmr0b1futs9",
+          "name": "GitHub account 68"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json.body ?? $input.first().json;\n\n// GitHub \"issues\" can emit actions other than \"opened\".\n// Pull requests also have issue-like data, so reject them explicitly.\nif (payload.action !== 'opened' || !payload.issue || payload.issue.pull_request) {\n  return [];\n}\n\nif (payload.repository?.full_name !== 'nullifierx1/n8n-code-review-test') {\n  return [];\n}\n\nreturn [{ json: payload }];"
+      },
+      "id": "9ead0edf-a97b-4cc9-b7e9-9fcc0e0fde9f",
+      "name": "Filter Opened Issue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const event = $input.first().json;\nconst number = Number(event.issue?.number);\n\nif (!Number.isInteger(number) || number <= 0) {\n  throw new Error('Missing or invalid GitHub issue number');\n}\n\nreturn [{\n  json: {\n    repository: event.repository.full_name,\n    owner: event.repository.owner.login,\n    repo: event.repository.name,\n    issue_number: number,\n    title: String(event.issue.title ?? ''),\n    body: String(event.issue.body ?? ''),\n    author: String(event.issue.user?.login ?? ''),\n    issue_url: String(event.issue.html_url ?? ''),\n    author_association: String(event.issue.author_association ?? ''),\n  },\n}];"
+      },
+      "id": "19520d9b-8e3e-441f-943f-4090287e1773",
+      "name": "Prepare Issue Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nconst { type, confidence } = result;\nif (![null, 'bug', 'task', 'feature'].includes(type) ||\n    typeof confidence !== 'number' || !Number.isFinite(confidence) ||\n    confidence < 0 || confidence > 1) {\n  throw new Error('Invalid classification type or confidence');\n}\nconst original = $('Prepare Issue Data').first().json;\nreturn [{ json: { ...original, type, confidence, route: type === null || confidence < 0.8 ? 'needs-triage' : type } }];"
+      },
+      "id": "f8a7abd3-5526-47d7-896d-f29189ad59e2",
+      "name": "Inspect Classification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "03b4535c-10ee-427e-90b3-65e9b8cf026a",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "bug",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "bug"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b1e87379-8401-41a5-b0e1-5231919efeba",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "task",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "task"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "57d4d339-8e6b-4444-be3d-2a111ea8ca3d",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "feature",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "feature"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "5c7840b3-3a6f-40a7-8f3c-bcf24a9d4711",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "needs-triage",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "needs-triage"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "id": "f960f3f5-e669-481c-87ad-74d0ad487556",
+      "name": "Switch Issue Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1152,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $json.owner }}/{{ $json.repo }}/issues/{{ $json.issue_number }}/labels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ labels: ['bug'] }) }}",
+        "options": {}
+      },
+      "id": "ae668d26-62cb-486a-b64b-9b0ba8654096",
+      "name": "Apply bug Label",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        -48
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "5mdYnoI1xfUV0ufI",
+          "name": "Bearer Auth account 38"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $json.owner }}/{{ $json.repo }}/issues/{{ $json.issue_number }}/labels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ labels: ['task'] }) }}",
+        "options": {}
+      },
+      "id": "fd9aaea7-ab4a-46de-9894-bdc3241c5ac3",
+      "name": "Apply task Label",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        192
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "5mdYnoI1xfUV0ufI",
+          "name": "Bearer Auth account 38"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $json.owner }}/{{ $json.repo }}/issues/{{ $json.issue_number }}/labels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ labels: ['feature'] }) }}",
+        "options": {}
+      },
+      "id": "abd33278-cb0f-4419-b7b0-3a89ad8268d6",
+      "name": "Apply feature Label",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        432
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "5mdYnoI1xfUV0ufI",
+          "name": "Bearer Auth account 38"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $json.owner }}/{{ $json.repo }}/issues/{{ $json.issue_number }}/labels",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ labels: ['needs-triage'] }) }}",
+        "options": {}
+      },
+      "id": "b31459e0-255f-4a8d-a16f-307e5f2c3b8e",
+      "name": "Apply needs-triage Label",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        672
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "5mdYnoI1xfUV0ufI",
+          "name": "Bearer Auth account 38"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "uft31YLJmkquvl2r",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/uft31YLJmkquvl2r",
+          "cachedResultName": "Practice 7.2 - AI Issue Classifier"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "title": "={{ $json.title }}",
+            "body": "={{ $json.body }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "body",
+              "displayName": "body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "2819357f-2afb-49c4-becb-08b1b63cfec0",
+      "name": "Execute AI Classifier Subworkflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        704,
+        272
+      ]
+    }
+  ],
+  "connections": {
+    "GitHub Issue Trigger": {
+      "main": [
+        [
+          {
+            "node": "Filter Opened Issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Opened Issue": {
+      "main": [
+        [
+          {
+            "node": "Prepare Issue Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Issue Data": {
+      "main": [
+        [
+          {
+            "node": "Execute AI Classifier Subworkflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inspect Classification": {
+      "main": [
+        [
+          {
+            "node": "Switch Issue Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Issue Type": {
+      "main": [
+        [
+          {
+            "node": "Apply bug Label",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Apply task Label",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Apply feature Label",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Apply needs-triage Label",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute AI Classifier Subworkflow": {
+      "main": [
+        [
+          {
+            "node": "Inspect Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "68dbbb4e8fa686c3fd4e9982ade6836edb66976f207553e7ac22df961581c78c"
+  }
+}

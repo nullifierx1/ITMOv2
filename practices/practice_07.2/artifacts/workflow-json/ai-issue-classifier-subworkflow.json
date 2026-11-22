@@ -1,0 +1,146 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "title"
+            },
+            {
+              "name": "body"
+            }
+          ]
+        }
+      },
+      "id": "9feff146-f763-4a38-8660-630dd9b0030f",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        48,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Classify this GitHub Issue using its title and body.\n\nTitle: {{ $json.title }}\nBody: {{ $json.body }}\n\nCategories:\n- bug: observed defect, regression or unexpected behavior in existing software.\n- task: concrete maintenance, documentation, testing or engineering work without a new user-facing capability.\n- feature: request for a new user-facing capability or enhancement.\n\nReturn exactly two JSON fields: type and confidence. type must be bug, task, feature or null. confidence is a numeric estimate between 0 and 1.\nIf the report is vague, ambiguous, or insufficiently described, use type null and confidence below 0.8. Do not infer missing details or add commentary.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a careful GitHub Issue triage classifier. Follow the attached structured output schema. Do not invent issue details."
+        }
+      },
+      "id": "9a15e494-2be9-4365-a3e5-0ef9e0412486",
+      "name": "AI Issue Classifier",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        352,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "openai/gpt-5",
+          "mode": "list",
+          "cachedResultName": "openai/gpt-5"
+        },
+        "options": {}
+      },
+      "id": "4af33c67-fc03-4560-ad72-75dbb84e3683",
+      "name": "VseLLM GPT-5",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        304,
+        272
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "QtkQUWbvdeU3QmWZ",
+          "name": "VseLLM ChatGPT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\"type\": \"object\", \"properties\": {\"type\": {\"type\": [\"string\", \"null\"], \"enum\": [\"bug\", \"task\", \"feature\", null]}, \"confidence\": {\"type\": \"number\", \"minimum\": 0, \"maximum\": 1}}, \"required\": [\"type\", \"confidence\"], \"additionalProperties\": false}"
+      },
+      "id": "7aa61703-1616-4f51-a1d9-241d68cbb164",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        496,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json.output;\nif (!result || typeof result !== 'object') {\n  throw new Error('AI classifier did not return structured data');\n}\nconst { type, confidence } = result;\nif (![null, 'bug', 'task', 'feature'].includes(type) ||\n    typeof confidence !== 'number' || !Number.isFinite(confidence) ||\n    confidence < 0 || confidence > 1) {\n  throw new Error('Invalid type or confidence returned by classifier');\n}\nreturn [{ json: { type, confidence } }];"
+      },
+      "id": "ae0afe99-0470-4183-ab5d-1d8fa4c68baf",
+      "name": "Return Classification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "AI Issue Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Issue Classifier": {
+      "main": [
+        [
+          {
+            "node": "Return Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VseLLM GPT-5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Issue Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Issue Classifier",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "68dbbb4e8fa686c3fd4e9982ade6836edb66976f207553e7ac22df961581c78c"
+  }
+}
