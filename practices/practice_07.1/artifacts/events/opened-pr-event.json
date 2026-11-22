@@ -1,0 +1,7 @@
+{
+  "event": "pull_request",
+  "action": "opened",
+  "repository": "nullifierx1/n8n-code-review-test",
+  "pr_number": 3,
+  "comment": null
+}

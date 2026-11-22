@@ -1,0 +1,7 @@
+{
+  "event": "issue_comment",
+  "action": "deleted",
+  "repository": "nullifierx1/n8n-code-review-test",
+  "pr_number": 3,
+  "comment": "/make_ai_review"
+}
