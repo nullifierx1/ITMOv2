@@ -1,6 +1,6 @@
 # Практика 7.2. Поддержка пользователя с помощью AI-инструментов
 
-> Рабочий черновик. По Issues есть результаты отдельных запусков, по недельному сценарию есть письма и записи в Data Table. Три JSON-экспорта ещё нужно приложить.
+> Приложены три JSON-экспорта n8n, результаты классификации Issues и недельные отчёты за 9–15 и 16–22 ноября 2026 года.
 
 ## 1. Цель работы
 
@@ -20,23 +20,15 @@
 - **Structured Output Parser:** формат `type` и `confidence`.
 - **Gmail OAuth2:** отправка HTML-писем.
 
-В письме недельного отчёта указаны GPT-5 и VseLLM. Точные ID моделей и версии сценариев предстоит сверить по JSON-экспортам.
+В классификаторе и недельной сводке настроена модель `openai/gpt-5` через VseLLM.
 
 ## 3. Архитектура
 
 В n8n три сценария. Обработчик Issues вызывает дочерний классификатор, недельный отчёт запускается отдельно.
 
-1. `Practice 7.2 - GitHub Issue Handler`: GitHub Trigger → фильтрация `issues.opened` → подготовка данных → Execute Workflow → проверка классификации → Switch → GitHub API (лейблы).
-2. `Practice 7.2 - AI Issue Classifier`: Execute Workflow Trigger → GPT-5 + Structured Output Parser → `type`, `confidence`.
-3. `Practice 7.2 - Weekly GitHub Report`: Cron `0 9 * * MON` → четыре GitHub API-запроса → Code (агрегация) → Data Table → предыдущая неделя и Δ → Basic LLM Chain → HTML → Gmail.
-
-**Схема основного обработчика:**
-
-![Вызов sub-workflow](artifacts/evidence/05-subworkflow-call-execution.png)
-
-**Схема еженедельной статистики:**
-
-![Успешное выполнение четырёх API-запросов](artifacts/evidence/07-weekly-four-api-execution.png)
+1. [GitHub Issue Handler](artifacts/workflow-json/github-issue-handler.json) принимает события `issues`. `Filter Opened Issue` оставляет только действие `opened`. После ответа классификатора `Switch Issue Type` выбирает ветку, которая отправляет лейбл через GitHub API.
+2. [AI Issue Classifier](artifacts/workflow-json/ai-issue-classifier-subworkflow.json) принимает `title` и `body` через Execute Workflow Trigger. Structured Output Parser проверяет формат ответа GPT-5, а `Return Classification` возвращает `type` и `confidence`.
+3. [Weekly GitHub Report](artifacts/workflow-json/weekly-gh-report.json) собирает статистику четырьмя запросами, сохраняет её в Data Table, читает прошлую неделю, рассчитывает Δ и отправляет HTML-письмо с комментарием модели.
 
 ## 4. Workflow 1: классификация Issues
 
@@ -53,7 +45,7 @@
 | [#14](https://github.com/nullifierx1/n8n-code-review-test/issues/14) | `needs-triage` |
 | [#15](https://github.com/nullifierx1/n8n-code-review-test/issues/15) | `bug`, через sub-workflow |
 
-На снимках ниже классификатор ещё находится в основном сценарии.
+Лейблы всех четырёх Issues видны на [общем снимке GitHub](artifacts/evidence/06-subworkflow-result-github.png) и на страницах Issues. На двух снимках ниже классификатор ещё находится в основном сценарии.
 
 ![Выполнение ветки bug](artifacts/evidence/01-bug-label-execution.png)
 
@@ -61,13 +53,17 @@
 
 ### 4.2. Неоднозначные обращения
 
-Если модель не определяет тип или возвращает `confidence < 0.8`, сценарий должен поставить лейбл `needs-triage` и завершиться без комментария. На приложенном запуске видна ветка `needs-triage`. Для Issue #14 ещё нужен вывод классификатора со значением `confidence` и скриншот страницы Issue.
+Если `type = null` или `confidence < 0.8`, `Inspect Classification` направляет Issue в ветку `needs-triage`.
 
-![Успешное выполнение needs-triage](artifacts/evidence/03-needs-triage-execution.png)
+В [Execution №6571](https://n8n-itmo.cyrweb.ru/workflow/yTltwc4yngz4fUE0/executions/6571) для [Issue №14](https://github.com/nullifierx1/n8n-code-review-test/issues/14) в Output `Inspect Classification` видны `type = null`, `confidence = 0.4` и `route = needs-triage`. Сценарий успешно назначил лейбл, список комментариев к Issue пуст. На момент запуска классификатор ещё находился в основном workflow. Его вынесли в отдельный сценарий позднее.
+
+![Execution №6571: успешное назначение needs-triage](artifacts/evidence/22-execution-6571-needs-triage-route.png)
+
+![Output Inspect Classification для Issue №14](artifacts/evidence/23-execution-6571-inspect-classification-output.png)
 
 ### 4.3. Вызов дочернего workflow
 
-Классификатор вынесен в отдельный sub-workflow. Основной workflow передаёт `title` и `body`, ожидает результат и продолжает маршрутизацию по `type` и `confidence`.
+`Execute AI Classifier Subworkflow` передаёт `title` и `body`, ждёт ответа и передаёт результат в `Inspect Classification`. Для Issue №15 сохранён успешный запуск ветки `bug` после выноса классификатора. Для `task`, `feature` и `needs-triage` в материалах есть результаты на GitHub, а Executions после рефакторинга отсутствуют.
 
 ![Основной workflow вызывает классификатор](artifacts/evidence/05-subworkflow-call-execution.png)
 
@@ -77,13 +73,13 @@
 
 ### 5.1. Расписание и данные GitHub
 
-Расписание по ТЗ: понедельник в 09:00 (`0 9 * * MON`). Сценарий делает четыре запроса к GitHub API за прошлую неделю: отдельно для созданных и закрытых Issues, отдельно для созданных и объединённых PR. Code node группирует созданные Issues по типу и автору.
+В `Every Monday 09:00` задан Cron `0 9 * * MON`. Часовой пояс расписания в экспорте не указан. `Prepare Weekly Date Range` вычисляет границы в UTC от понедельника 00:00 до следующего понедельника 00:00, правая граница исключена. Четыре HTTP Request запрашивают созданные и закрытые Issues, созданные и объединённые PR. В итоговом JSON `manualWeekStart = ''`.
 
 ![Execution с четырьмя HTTP Request](artifacts/evidence/07-weekly-four-api-execution.png)
 
 ### 5.2. Две тестовые недели
 
-Недельные интервалы были проверены вручную:
+Обе недели проверили вручную. В письме за 16–22 ноября видна пометка о ручной подстановке даты.
 
 | Показатель | 09.11–15.11.2026 | 16.11–22.11.2026 |
 |---|---:|---:|
@@ -92,7 +88,7 @@
 | Создано PR | 0 | 7 |
 | Объединено PR | 0 | 1 |
 
-Во вторую неделю `nullifierx1` открыл все восемь Issues. Из них два `bug`, одно `task`, одно `feature` и четыре `unknown`.
+`Aggregate Weekly Statistics1` группирует созданные Issues по лейблам и авторам. За 16–22 ноября `nullifierx1` открыл все восемь Issues. Из них два `bug`, одно `task`, одно `feature` и четыре `unknown`. Разбивка видна в письме. Отдельного снимка Output ноды в материалах нет.
 
 **Письмо за неделю 9–15 ноября:**
 
@@ -104,7 +100,7 @@
 
 ### 5.3. Data Table и предотвращение дубликатов
 
-Таблица `weekly_issue_stats` хранит недельные значения, JSON по типам и авторам. Операция `Upsert` использует `report_key` вида `owner/repo#YYYY-MM-DD` для повторных запусков.
+Таблица `weekly_issue_stats` хранит недельные значения и разбивку по типам и авторам. `Upsert Weekly Statistics` находит запись по `report_key` вида `owner/repo#YYYY-MM-DD`, где дата соответствует понедельнику. Повторный запуск обновляет существующую запись за эту неделю.
 
 ![Успешный Upsert и отправка Gmail](artifacts/evidence/17-upsert-execution.png)
 
@@ -112,7 +108,7 @@
 
 ### 5.4. Сравнение недель (Δ)
 
-Сценарий читает предыдущую неделю из Data Table и вычитает её показатели из текущих `Δ = current - previous`.
+`Read Previous Week` читает строку с ключом предыдущего понедельника из `weekly_issue_stats`. `Calculate Weekly Delta` вычитает сохранённые показатели из текущих, а `Build HTML Report` показывает разницу в письме.
 
 | Показатель | Предыдущая | Текущая | Δ |
 |---|---:|---:|---:|
@@ -125,38 +121,37 @@
 
 ### 5.5. AI-комментарий недели
 
-`Basic LLM Chain` получает сводную статистику и изменения Δ, формирует комментарий, который вставляется в HTML-письмо. При отсутствии данных предыдущей недели сценарий показывает `N/A`, не подставляя фиктивные числа.
+`AI Weekly Commentary` (Basic LLM Chain) передаёт GPT-5 через VseLLM текущие и прошлые показатели, разбивку и Δ. В письме модель кратко пересказывает статистику недели и отмечает изменения. `Build HTML Report` вставляет ответ в письмо, а `Send Gmail Weekly Report` отправляет его через Gmail. Перед запуском импортированного сценария укажите свой адрес получателя в `Send Gmail Weekly Report`.
 
 ![Успешный финальный Execution с моделью](artifacts/evidence/19-final-ai-workflow-execution.png)
 
+Отдельный тест за 9–15 ноября показывает `N/A`, когда строки за предыдущую неделю нет.
+
 ![Письмо без данных предыдущей недели](artifacts/evidence/20-final-ai-report-no-prior-week.png)
 
-![Письмо с Δ и AI-комментарием](artifacts/evidence/21-final-ai-report-with-delta.png)
 
 ## 6. Проверка критериев
 
 | Критерий README | Баллы | Что видно в материалах |
 |---|---:|---|
-| Лейблы `bug`, `task`, `feature` | 2 | Для `bug` и `task` есть скриншоты. Для `feature` в черновике есть ссылка на Issue #13. |
-| `needs-triage` при `confidence < 0.8` | 1 | Видна ветка `needs-triage`. Нужны численное значение и страница Issue без комментария. |
-| Вызов классификатора через Execute Workflow | 2 | Есть запуск для Issue #15. Нужны вход и выход ноды и результаты остальных веток после выноса классификатора. |
-| Cron и четыре запроса | 2 | Есть скриншот запуска запросов. Настройки Cron нужно сверить по экспорту. |
-| Группировка по типу и автору | 2 | Разбивка видна в письме. Нужен вывод `Aggregate Weekly Statistics`. |
-| HTML-письмо через Gmail | 2 | Есть запуск с Gmail и скриншоты доставленных писем. |
-| Запись в Data Table | 1 | Есть запуск Upsert и скриншот двух строк. |
-| Δ по предыдущей неделе из Data Table | 2 | В письме видны оба периода и Δ. Нужен вывод чтения таблицы и расчёта. |
-| AI-комментарий недели | 2 | Блок виден в письме. Нужен вход и выход `AI Weekly Commentary`. |
-| **Максимум по README** | **16** | |
+| Лейблы `bug`, `task`, `feature` | 2 | [Лейблы на GitHub](artifacts/evidence/06-subworkflow-result-github.png), Executions для [bug](artifacts/evidence/01-bug-label-execution.png) и [task](artifacts/evidence/02-task-label-execution.png). |
+| `needs-triage` при `confidence < 0.8` | 1 | [Execution №6571](https://n8n-itmo.cyrweb.ru/workflow/yTltwc4yngz4fUE0/executions/6571) до рефакторинга. [Output](artifacts/evidence/23-execution-6571-inspect-classification-output.png) показывает `type = null` и `confidence = 0.4`, [ветка](artifacts/evidence/22-execution-6571-needs-triage-route.png) успешно назначила лейбл [Issue №14](https://github.com/nullifierx1/n8n-code-review-test/issues/14) без комментария. |
+| Вызов классификатора через Execute Workflow | 2 | [Запуск ветки bug после выноса](artifacts/evidence/05-subworkflow-call-execution.png). Нужны данные вызова для №15 и подтверждение остальных веток после рефакторинга. |
+| Cron и четыре запроса | 2 | [Cron в JSON](artifacts/workflow-json/weekly-gh-report.json) и [успешный ручной Execution](artifacts/evidence/07-weekly-four-api-execution.png). |
+| Группировка по типу и автору | 2 | [Execution агрегации](artifacts/evidence/07-weekly-four-api-execution.png) и [разбивка в письме](artifacts/evidence/21-final-ai-report-with-delta.png). |
+| HTML-письмо через Gmail | 2 | [Успешная нода Gmail](artifacts/evidence/19-final-ai-workflow-execution.png) и [снимок тела письма](artifacts/evidence/21-final-ai-report-with-delta.png). |
+| Запись в Data Table | 1 | [Execution Upsert](artifacts/evidence/17-upsert-execution.png) и [две строки таблицы](artifacts/evidence/18-weekly-data-table-two-rows.png). |
+| Δ по предыдущей неделе из Data Table | 2 | [Чтение и расчёт в Execution](artifacts/evidence/19-final-ai-workflow-execution.png), [Δ в письме](artifacts/evidence/21-final-ai-report-with-delta.png). |
+| AI-комментарий недели | 2 | [Выполнение AI Weekly Commentary](artifacts/evidence/19-final-ai-workflow-execution.png) и [текст комментария в письме](artifacts/evidence/21-final-ai-report-with-delta.png). |
+| **Максимум по README** | **16** | Критерии засчитываются по порядку. |
 
-Слайды шире таблицы на 16 баллов. На страницах 18–19 показана ветка `first-time-contributor`: лейбл по `author_association == "NONE"` и приветствие со ссылкой на `CONTRIBUTING.md`. На страницах 22–23 есть дедупликация Issues через `processed_issues` с проверкой повторного открытия. В материалах черновика подтверждений этих веток нет. На странице 16 для обычных типов показаны комментарии с шаблонами и лейбл `feature-request`. README требует лейблы и отдельно оговаривает отсутствие комментария для `needs-triage`. Сверхрезультат на 10 баллов в этом черновике не заявлен.
+`first-time-contributor` и `processed_issues` показаны на занятии. В таблице оценки README на 16 баллов отдельных критериев для них нет.
 
 ## 7. Результаты и выводы
 
-На ручных прогонах письмо показало два случая. Когда в таблице нет строки за прошлую неделю, сравнение выводится как `N/A`. Когда строка есть, письмо показывает Δ: +8 созданных Issues, +4 закрытых Issues, +7 созданных PR и +1 объединённый PR. В письме эти числа повторяет AI-комментарий.
+На ручных запусках получились два варианта письма. За 9–15 ноября без предыдущей строки выводится `N/A`. Для 16–22 ноября предыдущая строка есть, поэтому в письме и комментарии модели видны четыре рассчитанных Δ.
 
 ## 8. Перед сдачей
 
-- [x] Приложить JSON-экспорты обработчика Issues, дочернего классификатора и недельного отчёта. Сверить версии и ID моделей, проверить файлы на секреты.
-- [ ] Приложить скриншоты финальных запусков классификатора и недостающие выводы нод из таблицы выше. Добавить общий снимок Issues с лейблами, если он нужен для проверки.
-- [x] Сверить Cron и часовой пояс. Убрать ручную подстановку недели (`manualWeekStart = ''`) перед включением расписания. На приложенном финальном письме видна пометка о ручной подстановке.
-- [x] Приложить скриншоты писем и Data Table за две недели, указать ссылки на тестовые Issues.
+- [ ] Приложить Input и Output `Execute AI Classifier Subworkflow` для Issue №15 (`title`, `body`, `type`, `confidence`). Для `task`, `feature` и `needs-triage` приложить сохранённые Executions после рефакторинга, если они есть. На каждом должен быть виден вызов дочернего сценария и соответствующая ветка лейбла.
+- Если сохранились отдельные Outputs финального недельного запуска за 16–22 ноября, приложить `Aggregate Weekly Statistics1` (счётчики, `by_type`, `by_author`), `Read Previous Week` (строка за 9–15 ноября), `Calculate Weekly Delta` (`previous`, `delta`) и Input/Output `AI Weekly Commentary` (статистика, Δ и текст).
