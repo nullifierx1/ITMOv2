@@ -1,6 +1,6 @@
 # Практика 8. Интерфейс недельного отчёта GitHub
 
-Этапы взяты из лекции 8: задача, прототип, контекст для агента, реализация и проверка. [Лекция 8](https://github.com/nullifierx1/ITMOv2/blob/main/lections/lection_8_Al%20engineering%20tools.pdf)
+Работа следует этапам со слайда 7 лекции 8: задача, прототип, контекст для агента, реализация и проверка. Подход к снимкам и разбору визуальных отличий показан на слайдах 41–45. [Лекция 8](https://github.com/nullifierx1/ITMOv2/blob/main/lections/lection_8_Al%20engineering%20tools.pdf)
 
 ## 1. Задача
 
@@ -32,17 +32,19 @@ v0 показан на слайде 11 лекции. Здесь его ката�
 
 ## 4. Реализация
 
-Фронтенд написан на React и TypeScript. Сборка и локальный запуск идут через Vite. Кнопка, поле даты, подпись, карточки и сообщение об ошибке используют компоненты shadcn/ui. Цвета и типографика заданы в [теме Tailwind](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/src/style.css).
+Фронтенд написан на React и TypeScript. Сборка и локальный запуск идут через Vite. Кнопка, поле даты, подпись, карточки и сообщение об ошибке используют компоненты shadcn/ui. [Компоненты экрана](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/src/main.tsx)
+
+Цвета и типографика заданы в [теме Tailwind](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/src/style.css).
 
 Браузер вызывает `/api/weekly-report?weekStart=…`, Vite проксирует запрос в n8n. [Workflow практики 8](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/n8n/weekly-report-api.json) проверяет дату и ищет ключ выбранной недели в `weekly_issue_stats`. При наличии отчёта он отдельно читает предыдущую неделю из той же таблицы. Веб-сценарий только читает таблицу. Строки сохраняет существующий [workflow практики 7.2](https://github.com/nullifierx1/ITMOv2/blob/d775351/practices/practice_07.2/artifacts/workflow-json/weekly-gh-report.json).
 
 В ответе воскресенье соответствует дню перед исключительной границей `week_end`. Сохранённая строка с нулями показывает карточки, а для отсутствующей строки выводится сообщение. Если предыдущей строки нет, дельта равна `null`. Дубликаты и сбои обработки дают ответ с ошибкой. [HTTP-контракт](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/spec.md#http)
 
-Пока ответ ожидается, кнопка выключена и виден статус загрузки. Обработчик формы дополнительно проверяет, есть ли запрос в работе. При ошибке поле сохраняет выбранную дату и форму можно отправить снова. Сценарий проверен с клавиатуры, включая переход к полю и отправку через Enter.
+Пока ответ ожидается, кнопка выключена и виден статус загрузки. Обработчик формы дополнительно проверяет, есть ли запрос в работе. При ошибке поле сохраняет выбранную дату и форму можно отправить снова. Поле имеет видимую подпись, а фокус выделяется через `:focus-visible`. В автоматической проверке Tab переводит фокус, Enter отправляет форму, значение даты задаёт Playwright. [Тест клавиатурной навигации](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/tests/report.spec.ts#L6) · [Стили фокуса](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/src/style.css#L27)
 
 ## 5. Проверки по лекции
 
-Playwright запускает Vite и подменяет ответы API. Проверки поведения охватывают дату запроса, валидацию, найденный отчёт и нулевую неделю, отсутствие записи, загрузку, ошибку 500 и повторную попытку. В тесте с задержкой ответ удерживается во время двойного клика, повторного Enter и повторной отправки формы. После получения ответа тест проверяет, что запрос был один.
+Playwright запускает Vite и подменяет ответы API. Проверки поведения охватывают дату запроса, валидацию, найденный отчёт и нулевую неделю, отсутствие записи, загрузку, ошибку 500 и повторную попытку. В тесте с задержкой ответ удерживается во время двойного клика, повторного Enter и повторной отправки формы. После получения ответа тест проверяет, что запрос был один. [Валидация даты](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/tests/report.spec.ts#L32) · [Загрузка и блокировка повторов](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/tests/report.spec.ts#L46) · [Нулевая неделя, отсутствие записи и повтор после ошибки](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/tests/report.spec.ts#L70)
 
 Контрактные тесты выполняют код из JSON-экспорта на тестовых строках формата 7.2. Они сверяют результаты с клиентскими фикстурами и проверяют отсутствие предыдущей строки, дубликаты, повреждённый JSON и статусы ответов. [Тест контракта](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/tests/report-contract.spec.ts)
 
@@ -52,7 +54,7 @@ Playwright запускает Vite и подменяет ответы API. Пр�
 
 ## 6. Запуск для ревью
 
-В репозитории фронтенда `make all-setup` устанавливает зависимости и Chromium. Команда `make demo` запускает Vite на `127.0.0.1` до `Ctrl+C`. Команда `make check` выполняет сборку и тесты, а `make test-report` открывает HTML-отчёт Playwright. [Команды и настройки](https://github.com/nullifierx1/n8n-github-weekly-report#запуск)
+В репозитории фронтенда `make all-setup` устанавливает зависимости и Chromium. Команда `make demo` запускает Vite на `127.0.0.1` до `Ctrl+C`. Команда `make check` выполняет сборку и тесты, и завершается. Команда `make test-report` запускает HTML-отчёт Playwright отдельно по адресу `http://127.0.0.1:9324/` до `Ctrl+C`. Загрузка страницы и списка тестов проверена в Chromium. [Команды и настройки](https://github.com/nullifierx1/n8n-github-weekly-report#запуск)
 
 ## 7. Проверка с опубликованным n8n
 
@@ -62,14 +64,14 @@ Production-запрос из React за 16–22 ноября прошёл чер
 
 Оригинальные снимки ручных проверок от 22 ноября 2026 года:
 
-- [Отчёт за 16–22 ноября, разбивки и дельта](https://github.com/nullifierx1/n8n-github-weekly-report/blob/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/01-report-2026-11-16.png)
-- [Сохранённая нулевая неделя 9–15 ноября](https://github.com/nullifierx1/n8n-github-weekly-report/blob/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/02-zero-2026-11-09.png)
-- [Отсутствующий отчёт за неделю с 30 ноября](https://github.com/nullifierx1/n8n-github-weekly-report/blob/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/03-missing-2026-11-30.png)
-- [Ошибка загрузки в режиме Offline](https://github.com/nullifierx1/n8n-github-weekly-report/blob/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/04-offline-error.png)
-- [Успешный повтор после восстановления сети](https://github.com/nullifierx1/n8n-github-weekly-report/blob/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/05-online-retry.png)
-- [Успешная цепочка n8n, Production Execution №7509](https://github.com/nullifierx1/n8n-github-weekly-report/blob/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/06-n8n-execution-7509.png)
+- [Отчёт за 16–22 ноября, разбивки и дельта](https://raw.githubusercontent.com/nullifierx1/n8n-github-weekly-report/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/01-report-2026-11-16.png)
+- [Сохранённая нулевая неделя 9–15 ноября](https://raw.githubusercontent.com/nullifierx1/n8n-github-weekly-report/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/02-zero-2026-11-09.png)
+- [Отсутствующий отчёт за неделю с 30 ноября](https://raw.githubusercontent.com/nullifierx1/n8n-github-weekly-report/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/03-missing-2026-11-30.png)
+- [Ошибка загрузки в режиме Offline](https://raw.githubusercontent.com/nullifierx1/n8n-github-weekly-report/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/04-offline-error.png)
+- [Успешный повтор после восстановления сети](https://raw.githubusercontent.com/nullifierx1/n8n-github-weekly-report/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/05-online-retry.png)
+- [Успешная цепочка n8n, Production Execution №7509](https://raw.githubusercontent.com/nullifierx1/n8n-github-weekly-report/b13b73a75978c201cc689ab5c5589131b50c8590/evidence/live-integration/06-n8n-execution-7509.png)
 
-Playwright проверяет интерфейс с подменой HTTP-ответов. Контрактные тесты отдельно проверяют преобразование строк таблицы по экспорту workflow. Эти прогоны дополняют живую проверку через n8n.
+Playwright проверяет интерфейс с подменой HTTP-ответов. Контрактные тесты отдельно проверяют преобразование строк таблицы по экспорту workflow. Задержка и статус загрузки проверяются в текущем тесте. Снимок загрузки относится к первой версии интерфейса и сделан с локальной подменой webhook. [Снимок первой версии](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/evidence/loading.png)
 
 ## 8. Результаты автоматических проверок
 
