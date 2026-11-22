@@ -46,15 +46,27 @@ Playwright запускает Vite и подменяет ответы API. Пр�
 
 Контрактные тесты выполняют код из JSON-экспорта на тестовых строках формата 7.2. Они сверяют результаты с клиентскими фикстурами и проверяют отсутствие предыдущей строки, дубликаты, повреждённый JSON и статусы ответов. [Тест контракта](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/tests/report-contract.spec.ts)
 
-Визуальные эталоны показывают готовый отчёт на 1000 и 390 px, а также сохранённую нулевую неделю, отсутствие записи и ошибку на 390 px. Размер окна, локаль и часовой пояс фиксированы, анимации отключены. Визуальные тесты рассчитаны на Chromium в Linux. [Скриншотные тесты](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/tests/visual.spec.ts)
+Визуальные эталоны показывают готовый отчёт на 1000 и 390 px, а также сохранённую нулевую неделю, отсутствие записи и ошибку на 390 px. Размер окна, локаль и часовой пояс фиксированы, анимации отключены. Playwright сравнивает снимок приложения с эталоном той же ОС. При изменении видны эталон, текущий снимок и визуальная разница в HTML-отчёте. [Скриншотные тесты](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/tests/visual.spec.ts)
 
 В первой итерации временное увеличение заголовка и удаление текста ошибки привели к падению визуального и поведенческого тестов. После возврата исходников тесты прошли. [Контрольный прогон](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/evidence/playwright-negative.txt) · [Визуальный diff](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/evidence/visual-diff.png)
 
 ## 6. Запуск для ревью
 
-В репозитории фронтенда один раз выполнить `make setup`, затем `make check`, чтобы собрать приложение и прогнать клиентские тесты. Для демо с n8n настроить `.env.local` по README и выполнить `make run`. [Команды и настройки](https://github.com/nullifierx1/n8n-github-weekly-report#запуск)
+В репозитории фронтенда `make all-setup` устанавливает зависимости и Chromium. Команда `make demo` запускает Vite на `127.0.0.1` до `Ctrl+C`. Команда `make check` выполняет сборку и тесты, а `make test-report` открывает HTML-отчёт Playwright. [Команды и настройки](https://github.com/nullifierx1/n8n-github-weekly-report#запуск)
 
-## 7. Результаты проверок
+## 7. Проверка с опубликованным n8n
 
-- `make check` выполнил сборку и все 12 тестов Playwright с сохранёнными визуальными эталонами. [Вывод команды](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/evidence/make-check-saved-reports.txt)
-- В PDF показаны семь состояний макета и мобильный экран. Контрактные и клиентские проверки выполнялись локально. [Материалы проверки](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/evidence/README.md)
+Production-запрос из React за 16–22 ноября прошёл через Vite proxy, n8n Webhook и Data Table `weekly_issue_stats`. Интерфейс получил `success`, показал счётчики 8 / 4 / 7 / 1, разбивки и Δ. [Production Execution №7509](https://n8n-itmo.cyrweb.ru/workflow/6mpt6ZEKaK3M9RtY/executions/7509?projectId=6NeKLg2x1W0oWnNT)
+
+В отдельных ручных проверках неделя 9–15 ноября вернула сохранённый отчёт с четырьмя нулями без сравнения, 30 ноября вернуло `empty`, дата 17 ноября дала HTTP 400. В режиме Offline интерфейс показал ошибку. После возврата Online повторная отправка загрузила отчёт. Для этих проверок номера Executions не указаны. [Сводка ручных проверок](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/evidence/live-integration/README.md)
+
+Playwright проверяет интерфейс с подменой HTTP-ответов. Контрактные тесты отдельно проверяют преобразование строк таблицы по экспорту workflow. Эти прогоны дополняют живую проверку через n8n.
+
+## 8. Результаты автоматических проверок
+
+| Среда | Команда | Результат |
+|---|---|---|
+| Linux/WSL | `make check` | Сборка успешна, 12 тестов прошли |
+| Нативный Windows | `npm.cmd run build`, затем `npm.cmd test -- --update-snapshots=none` | Сборка успешна, 12 тестов прошли |
+
+В каждом прогоне прошли четыре контрактных, шесть поведенческих и два скриншотных теста. При первом запуске на Windows два визуальных теста остановились из-за отсутствующих эталонов. Пять Windows PNG созданы Playwright в нативном Chromium, просмотрены и проверены повторным прогоном без обновления эталонов. [Вывод Linux](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/evidence/make-check-linux.txt) · [Вывод Windows](https://github.com/nullifierx1/n8n-github-weekly-report/blob/main/evidence/make-check-windows.txt)
