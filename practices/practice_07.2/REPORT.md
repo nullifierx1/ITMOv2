@@ -63,11 +63,18 @@
 
 ### 4.3. Вызов дочернего workflow
 
-`Execute AI Classifier Subworkflow` передаёт `title` и `body`, ждёт ответа и передаёт результат в `Inspect Classification`. Для Issue №15 сохранён успешный запуск ветки `bug` после выноса классификатора. Для `task`, `feature` и `needs-triage` в материалах есть результаты на GitHub, а Executions после рефакторинга отсутствуют.
+В основном `GitHub Issue Handler` нода `Execute AI Classifier Subworkflow` передаёт `title` и `body` в `Practice 7.2 - AI Issue Classifier` и ждёт ответ с `type` и `confidence`. После ответа `Inspect Classification` определяет маршрут, а `Switch Issue Type` передаёт Issue в ноду GitHub API, которая назначает лейбл.
 
-![Основной workflow вызывает классификатор](artifacts/evidence/05-subworkflow-call-execution.png)
+После выноса классификатора проверили все четыре маршрута. На снимках видны успешный вызов дочернего workflow и выполнение нод до назначения соответствующего лейбла.
 
-![Issue после работы дочернего классификатора](artifacts/evidence/06-subworkflow-result-github.png)
+| Маршрут | Тест | Доказательство |
+|---|---|---|
+| `bug` | [Issue №15](https://github.com/nullifierx1/n8n-code-review-test/issues/15) | [Скриншот запуска](artifacts/evidence/05-subworkflow-call-execution.png) |
+| `task` | [Execution №7350](https://n8n-itmo.cyrweb.ru/workflow/YoPXV2yTeaIXktu6/executions/7350) | [Скриншот](artifacts/evidence/24-execution-7350-subworkflow-task.png) |
+| `feature` | [Execution №7353](https://n8n-itmo.cyrweb.ru/workflow/YoPXV2yTeaIXktu6/executions/7353) | [Скриншот](artifacts/evidence/25-execution-7353-subworkflow-feature.png) |
+| `needs-triage` | [Execution №7355](https://n8n-itmo.cyrweb.ru/workflow/YoPXV2yTeaIXktu6/executions/7355) | [Скриншот](artifacts/evidence/26-execution-7355-subworkflow-needs-triage.png) |
+
+Execution №6571 из раздела 4.2 относится к ранней версии со встроенным классификатором. На снимках новых запусков видны маршруты, а числовые значения `confidence` в кадр не попали.
 
 ## 5. Еженедельный GitHub Report
 
@@ -136,7 +143,7 @@
 |---|---:|---|
 | Лейблы `bug`, `task`, `feature` | 2 | [Лейблы на GitHub](artifacts/evidence/06-subworkflow-result-github.png), Executions для [bug](artifacts/evidence/01-bug-label-execution.png) и [task](artifacts/evidence/02-task-label-execution.png). |
 | `needs-triage` при `confidence < 0.8` | 1 | [Execution №6571](https://n8n-itmo.cyrweb.ru/workflow/yTltwc4yngz4fUE0/executions/6571) до рефакторинга. [Output](artifacts/evidence/23-execution-6571-inspect-classification-output.png) показывает `type = null` и `confidence = 0.4`, [ветка](artifacts/evidence/22-execution-6571-needs-triage-route.png) успешно назначила лейбл [Issue №14](https://github.com/nullifierx1/n8n-code-review-test/issues/14) без комментария. |
-| Вызов классификатора через Execute Workflow | 2 | [Запуск ветки bug после выноса](artifacts/evidence/05-subworkflow-call-execution.png). Нужны данные вызова для №15 и подтверждение остальных веток после рефакторинга. |
+| Вызов классификатора через Execute Workflow | 2 | После выноса классификатора успешно прошли все четыре маршрута. [Запуски и скриншоты](#43-вызов-дочернего-workflow). |
 | Cron и четыре запроса | 2 | [Cron в JSON](artifacts/workflow-json/weekly-gh-report.json) и [успешный ручной Execution](artifacts/evidence/07-weekly-four-api-execution.png). |
 | Группировка по типу и автору | 2 | [Execution агрегации](artifacts/evidence/07-weekly-four-api-execution.png) и [разбивка в письме](artifacts/evidence/21-final-ai-report-with-delta.png). |
 | HTML-письмо через Gmail | 2 | [Успешная нода Gmail](artifacts/evidence/19-final-ai-workflow-execution.png) и [снимок тела письма](artifacts/evidence/21-final-ai-report-with-delta.png). |
@@ -153,5 +160,5 @@
 
 ## 8. Перед сдачей
 
-- [ ] Приложить Input и Output `Execute AI Classifier Subworkflow` для Issue №15 (`title`, `body`, `type`, `confidence`). Для `task`, `feature` и `needs-triage` приложить сохранённые Executions после рефакторинга, если они есть. На каждом должен быть виден вызов дочернего сценария и соответствующая ветка лейбла.
+- Если сохранились данные вызова `Execute AI Classifier Subworkflow` для Issue №15, можно приложить Input с `title` и `body` и Output с `type` и `confidence`.
 - Если сохранились отдельные Outputs финального недельного запуска за 16–22 ноября, приложить `Aggregate Weekly Statistics1` (счётчики, `by_type`, `by_author`), `Read Previous Week` (строка за 9–15 ноября), `Calculate Weekly Delta` (`previous`, `delta`) и Input/Output `AI Weekly Commentary` (статистика, Δ и текст).
