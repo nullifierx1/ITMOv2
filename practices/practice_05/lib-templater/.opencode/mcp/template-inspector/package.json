@@ -1,0 +1,10 @@
+{
+  "name": "template-inspector-mcp",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.3.0",
+    "zod": "^4.6.5"
+  }
+}
