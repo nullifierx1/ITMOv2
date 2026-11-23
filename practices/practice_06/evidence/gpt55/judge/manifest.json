@@ -1,0 +1,9 @@
+{
+  "agent": "threat-judge",
+  "model": "vsellm/openai/gpt-5",
+  "status": "blocked_by_automatic_approval_review",
+  "model_request_sent": false,
+  "model_response_received": false,
+  "reason": "Automatic approval review rejected the attempted invocation because it would upload Practice 06 reports and evidence to the external VseLLM endpoint without sufficiently explicit approval for that payload and destination.",
+  "documents_changed_from_judge_output": false
+}

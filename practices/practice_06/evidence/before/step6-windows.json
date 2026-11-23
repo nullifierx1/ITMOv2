@@ -1,0 +1,11 @@
+{
+  "command": [
+    "make",
+    "step6"
+  ],
+  "cwd": "C:\\Users\\1\\Documents\\ai-education\\ITMOv2",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "exit_code": 2,
+  "stdout": "",
+  "stderr": "The system cannot execute the specified program.\r\nmake[2]: *** [install] ������ 1\r\nmake[1]: *** [test] ������ 2\r\nmake: *** [step6] ������ 2\r\n"
+}

@@ -1,0 +1,25 @@
+{
+  "session_id": "ses_e82ec1078ffequnwpg1K2eTgR5",
+  "user_message_id": "msg_17d13f0c2001WAMphP0GQw89RL",
+  "assistant": [
+    {
+      "id": "msg_17d13f114001aEAH6MwHzUgB4o",
+      "agent": "shop-planner",
+      "model": {
+        "id": "openai/gpt-5",
+        "providerID": "vsellm",
+        "variant": "default"
+      },
+      "finish": "stop",
+      "tokens": {
+        "input": 1411,
+        "output": 58,
+        "reasoning": 1280,
+        "cache": {
+          "read": 0,
+          "write": 0
+        }
+      }
+    }
+  ]
+}

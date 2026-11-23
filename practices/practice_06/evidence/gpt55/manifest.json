@@ -1,0 +1,84 @@
+{
+  "started_utc": "2026-10-27T11:09:13.235593+00:00",
+  "platform": "Linux-6.6.114.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "model_argument": "vsellm/openai/gpt-5",
+  "backend_model_note": "Only vsellm/openai/gpt-5 is confirmed; the backend model version is not independently attested.",
+  "git_head": "0bab6d89ebd8bdaf255c65800be52db623cb2f80",
+  "opencode_version": "1.18.25",
+  "task": "Покажи чек по заказу. Верни только JSON решения.",
+  "runs": [
+    {
+      "context": "before",
+      "command": [
+        "opencode",
+        "run",
+        "--dir",
+        "/mnt/c/Users/1/Documents/ai-education/ITMOv2/practices/practice_06",
+        "--agent",
+        "shop-planner",
+        "--model",
+        "vsellm/openai/gpt-5",
+        "--format",
+        "json",
+        "--title",
+        "Practice 06 H01 before",
+        "--file",
+        "/mnt/c/Users/1/Documents/ai-education/ITMOv2/practices/practice_06/evidence/before/context.txt",
+        "--",
+        "Покажи чек по заказу. Верни только JSON решения."
+      ],
+      "context_sha256": "d217b746dca50aae33e92958ec714f4facab3fe58f42f91e67e78b605d81dacc",
+      "started_utc": "2026-10-27T11:09:19.628659+00:00",
+      "exit_code": 1,
+      "finished_utc": "2026-10-27T11:09:25.253625+00:00",
+      "session_ids": [
+        "ses_e82f31361ffezKm7dUFIP4WMDJ"
+      ],
+      "parse_error": "Expecting value: line 1 column 1 (char 0)",
+      "executor": "not called: response is not a JSON object"
+    },
+    {
+      "context": "after",
+      "command": [
+        "opencode",
+        "run",
+        "--dir",
+        "/mnt/c/Users/1/Documents/ai-education/ITMOv2/practices/practice_06",
+        "--agent",
+        "shop-planner",
+        "--model",
+        "vsellm/openai/gpt-5",
+        "--format",
+        "json",
+        "--title",
+        "Practice 06 H01 after",
+        "--file",
+        "/mnt/c/Users/1/Documents/ai-education/ITMOv2/practices/practice_06/evidence/after/context.txt",
+        "--",
+        "Покажи чек по заказу. Верни только JSON решения."
+      ],
+      "context_sha256": "c50f5e7ff80eb45d9f481604ac48ddbe3250c6e111a42c8e7966019795d8eda0",
+      "started_utc": "2026-10-27T11:09:25.336933+00:00",
+      "exit_code": 1,
+      "finished_utc": "2026-10-27T11:09:29.983929+00:00",
+      "session_ids": [
+        "ses_e82f2fe0affev4F8OTNEDwOLx6"
+      ],
+      "parse_error": "Expecting value: line 1 column 1 (char 0)",
+      "executor": "not called: response is not a JSON object"
+    }
+  ],
+  "source_sha256": {
+    "opencode.json": "940e995fc8533add2b4d2f908e37faf5a6198d2771452bf02f87819dca752f9f",
+    "planner-system.txt": "34f1461714c2789847362a9b7144eae857cf41b6482de5736549654d7787b314",
+    "lab/service.py": "362eb7bf0b22172106c5798393261dae3b2695a6e3fc9d266c93f8663b49e163",
+    "lab/sandbox.py": "221135fb67bc72c90e8d533409f89e8282004313656fa9ae838d04f575a1ac4a"
+  },
+  "service": {
+    "base_url": "http://127.0.0.1:45295",
+    "session_user": "alice",
+    "role": "customer",
+    "token_saved": false
+  },
+  "finished_utc": "2026-10-27T11:09:30.529567+00:00"
+}
